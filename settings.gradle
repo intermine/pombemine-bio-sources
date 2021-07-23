@@ -1,0 +1,6 @@
+rootProject.name = 'bio-sources-pombe'
+
+include ':bio-source-pombe-genes'
+
+project(':bio-source-pombe-genes').projectDir = new File(settingsDir, './pombe-genes')
+

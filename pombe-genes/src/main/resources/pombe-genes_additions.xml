@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<classes>
+	<class name="Gene" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000704">
+	</class>
+</classes>

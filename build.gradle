@@ -1,0 +1,142 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        jcenter()
+        maven {
+            url "https://oss.jfrog.org/artifactory/oss-snapshot-local"
+        }
+    }
+    dependencies {
+        classpath group: 'org.intermine', name: 'plugin', version: System.getProperty("imVersion")
+        classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.0"
+        classpath "org.jfrog.buildinfo:build-info-extractor-gradle:4.6.2"
+    }
+}
+
+ext {
+    // set here to make available to individual bio-sources
+    bioVersion = System.getProperty("bioVersion")
+    imVersion = System.getProperty("imVersion")
+}
+
+subprojects {
+    group = 'org.intermine'
+    version = '1.0.0'
+
+    apply plugin: 'java'
+    apply plugin: 'maven'
+    apply plugin: 'dbmodel'
+    apply plugin: 'biosource-dbmodel'
+    apply plugin: "checkstyle"
+    apply plugin: 'com.jfrog.bintray'
+
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+
+    repositories {
+        mavenLocal()
+        jcenter()
+        maven {
+            url "https://oss.jfrog.org/artifactory/oss-snapshot-local"
+        }
+    }
+
+    configurations {
+        bioModel
+        mergeModel
+    }
+
+    dependencies {
+        compile group: 'log4j', name: 'log4j', version: '1.2.17'
+        compile group: 'org.intermine', name: 'bio-core', version: bioVersion
+        compile group : "org.intermine", name: "intermine-resources", version: imVersion // log4j
+        compile group: 'commons-collections', name: 'commons-collections', version: '3.2'
+        testCompile group: 'junit', name: 'junit', version: '4.8.2'
+        testCompile group: "org.intermine", name: "intermine-integrate", version: imVersion, classifier: "testClasses"
+        testCompile group: 'xmlunit', name: 'xmlunit', version: '1.0'
+        mergeModel group : "org.intermine", name: "intermine-objectstore", version: imVersion
+        bioModel group: 'org.intermine', name: 'bio-model', version: bioVersion, transitive: false
+    }
+
+    dbModelConfig {
+        objectStoreName = "os.bio-test"
+        modelName = "genomic"
+        defaultInterminePropertiesFile = "default.intermine.bio-test.properties"
+    }
+
+    task copyMineProperties() {
+        dependsOn 'processResources'
+        doLast {
+            copy {
+                from "${System.env.HOME}/.intermine/intermine-bio-test.properties"
+                into sourceSets.main.output.resourcesDir
+                rename { fileName -> fileName.replace('intermine-bio-test.properties', 'intermine.properties') }
+            }
+        }
+    }
+
+    jar {
+        exclude "intermine.properties"
+    }
+
+    // see http://blog.joda.org/2014/02/turning-off-doclint-in-jdk-8-javadoc.html
+    tasks.withType(Javadoc) {
+        options.addStringOption('Xdoclint:none', '-quiet')
+    }
+
+    checkstyle {
+        toolVersion '7.8.1'
+        configFile file("${rootDir}/config/checkstyle/checkstyle.xml")
+        sourceSets = [sourceSets.main]
+        showViolations = true
+        ignoreFailures = false
+        maxWarnings = 0
+        //reportsDir = file("$project.rootDir/reports/checkstyle/$project.name")
+        configProperties = [
+                'checkstyle.header.file': "${rootDir}/config/checkstyle/copyright_header.txt",
+                'suppressionFile': "${rootDir}/config/checkstyle/suppressions.xml"
+        ]
+    }
+
+    checkstyleMain {
+        source = fileTree('src/main') {
+            includes = ['**/*.java']
+            excludes = ['build/**']
+        }
+    }
+
+    checkstyleTest {
+        enabled = false
+    }
+
+    task sourcesJar(type: Jar, dependsOn: classes) {
+        classifier = 'sources'
+        from sourceSets.main.allSource
+    }
+
+    task javadocJar(type: Jar, dependsOn: javadoc) {
+        classifier = 'javadoc'
+        from javadoc.destinationDir
+    }
+
+    tasks.withType(Test) {
+        scanForTestClasses = false
+        include '**/*Test.class'
+    }
+
+    test {
+        ignoreFailures = true
+        forkEvery = 1
+    }
+
+    artifacts {
+        archives sourcesJar
+        archives javadocJar
+    }
+}
+
+task testReport(type: TestReport) {
+    destinationDir = file("$buildDir/reports/allTests")
+    // Include the results from the `test` task in all subprojects
+    reportOn subprojects*.test
+}
