@@ -44,6 +44,7 @@ public class PombeGenesConverter extends BioFileConverter
     private static final Logger LOG = Logger.getLogger(PombeGenesConverter.class);
     private String fileName = null;
     private Map<String, Item> organisms = new HashMap<>();
+    private Map<String, Item> chromosomes = new HashMap<>();
     private Map<String, Item> proteins = new HashMap<>();
     private Map<String, List<String>> proteinGeneIds = new HashMap<>();
     //private Map
@@ -82,7 +83,6 @@ public class PombeGenesConverter extends BioFileConverter
             while (it.hasNext()) {
                 storeGene(it.next());
             }
-            storeOrganims();
         }
     }
 
@@ -90,7 +90,6 @@ public class PombeGenesConverter extends BioFileConverter
         Item gene = createItem("Gene");
         String primaryIdentifier = geneRoot.path("systematic_id").asText();
         gene.setAttribute("primaryIdentifier", primaryIdentifier);
-        System.out.println(primaryIdentifier);
         String symbol = geneRoot.path("name").asText();
         if (!StringUtils.isEmpty(symbol)) {
             gene.setAttribute("symbol", symbol);
@@ -103,10 +102,19 @@ public class PombeGenesConverter extends BioFileConverter
         //set organism
         String taxonId = geneRoot.path("taxonid").asText();
         gene.setReference("organism", createOrganism(taxonId));
+        //set chromosome and chromosome location
+        JsonNode location = geneRoot.path("location");
+        if (location != null) {
+            String chromosomePrimaryIdentifier = location.path("chromosome_name").asText();
+            gene.setReference("chromosome", createChromosome(chromosomePrimaryIdentifier));
+            gene.setReference("chromosomeLocation", createLocation(location, gene));
+        }
         //set protein
         String uniprotId = geneRoot.path("uniprot_identifier").asText();
-        storeProtein(uniprotId);
-        gene.setCollection("proteins", Arrays.asList(proteins.get(uniprotId).getIdentifier()));
+        if (!StringUtils.isEmpty(uniprotId)) {
+            storeProtein(uniprotId);
+            gene.setCollection("proteins", Arrays.asList(proteins.get(uniprotId).getIdentifier()));
+        }
         try {
             store(gene);
         } catch (ObjectStoreException ex) {
@@ -131,9 +139,51 @@ public class PombeGenesConverter extends BioFileConverter
         } else {
             Item organism = createItem("Organism");
             organism.setAttributeIfNotNull("taxonId", taxonId);
+            try {
+                store(organism);
+            } catch (ObjectStoreException ex) {
+                throw new RuntimeException("Error storing organism ", ex);
+            }
             organisms.put(taxonId, organism);
             return organism;
         }
+    }
+
+    private Item createChromosome(String primaryIdentifier) {
+        if (chromosomes.containsKey(primaryIdentifier)) {
+            return chromosomes.get(primaryIdentifier);
+        } else {
+            Item chromosome = createItem("Chromosome");
+            chromosome.setAttributeIfNotNull("primaryIdentifier", primaryIdentifier);
+            try {
+                store(chromosome);
+            } catch (ObjectStoreException ex) {
+                throw new RuntimeException("Error storing protein ", ex);
+            }
+            chromosomes.put(primaryIdentifier, chromosome);
+            return chromosome;
+        }
+    }
+    private Item createLocation(JsonNode locationNode, Item gene) {
+        Item location = createItem("Location");
+        location.setAttributeIfNotNull("start", locationNode.path("start_pos").asText());
+        location.setAttributeIfNotNull("end", locationNode.path("end_pos").asText());
+        String strandValue = locationNode.path("strand").asText();
+        switch (strandValue) {
+            case "forward":
+                location.setAttribute("strand", "1");
+            case "reverse":
+                location.setAttribute("strand", "-1");
+            default:
+                location.setAttribute("strand", "0");
+        }
+        location.setReference("locatedOn", gene);
+        try {
+            store(location);
+        } catch (ObjectStoreException ex) {
+            throw new RuntimeException("Error storing protein ", ex);
+        }
+        return location;
     }
 
     private Item storeProtein(String uniprotId) {
