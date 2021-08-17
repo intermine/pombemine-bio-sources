@@ -36,8 +36,6 @@ public class PombeGenesConverter extends BioFileConverter
     private Map<String, Item> organisms = new HashMap<>();
     private Map<String, Item> chromosomes = new HashMap<>();
     private Map<String, Item> proteins = new HashMap<>();
-    private Map<String, List<String>> proteinGeneIds = new HashMap<>();
-    //private Map
 
     /**
      * Constructor
@@ -49,19 +47,12 @@ public class PombeGenesConverter extends BioFileConverter
         super(writer, model, "Pombase", "Pombase data");
     }
 
-    /*
-     *    json structure:
-     *    ---------------
-     *    
-     */ 
-
-
     /**
      * {@inheritDoc}
      */
     public void process(Reader reader) throws Exception {
         File file = getCurrentFile();
-        if (file != null) { // test is run with an internal file, f will be null
+        if (file != null) { // test is run with an internal file, file will be null
             fileName = file.getName();
 
             LOG.info("======================================");
@@ -97,7 +88,7 @@ public class PombeGenesConverter extends BioFileConverter
         String taxonId = geneRoot.path("taxonid").asText();
         gene.setReference("organism", storeOrganism(taxonId));
         //set synonyms
-        gene.setCollection("synonyms", storeSynonyms(geneRoot.path("synonyms")));
+        storeSynonyms(geneRoot.path("synonyms"), gene);
         //set chromosome and chromosome location
         JsonNode location = geneRoot.path("location");
         if (location != null) {
@@ -105,6 +96,8 @@ public class PombeGenesConverter extends BioFileConverter
             gene.setReference("chromosome", storeChromosome(chromosomePrimaryIdentifier));
             gene.setReference("chromosomeLocation", storeLocation(location, gene));
         }
+        //set transcripts
+        storeTranscripts(geneRoot, gene);
         //set protein
         String uniprotId = geneRoot.path("uniprot_identifier").asText();
         if (!StringUtils.isEmpty(uniprotId)) {
@@ -134,12 +127,13 @@ public class PombeGenesConverter extends BioFileConverter
         }
     }
 
-    private List<String> storeSynonyms(JsonNode synonyms) {
+    private void storeSynonyms(JsonNode synonyms, Item bioEntity) {
         List<String> synonymIds = new ArrayList<>();
         for (JsonNode synonymNode : synonyms) {
             Item synonym = createItem("Synonym");
             synonym.setAttributeIfNotNull("value", synonymNode.path("name").asText());
             synonym.setAttributeIfNotNull("type", synonymNode.path("type").asText());
+            synonym.setReference("subject", bioEntity);
             try {
                 store(synonym);
                 synonymIds.add(synonym.getIdentifier());
@@ -147,7 +141,7 @@ public class PombeGenesConverter extends BioFileConverter
                 throw new RuntimeException("Error storing synonym ", ex);
             }
         }
-        return synonymIds;
+        bioEntity.setCollection("synonyms", synonymIds);
 
     }
 
@@ -166,7 +160,7 @@ public class PombeGenesConverter extends BioFileConverter
             return chromosome;
         }
     }
-    private Item storeLocation(JsonNode locationNode, Item gene) {
+    private Item storeLocation(JsonNode locationNode, Item bioEntity) {
         Item location = createItem("Location");
         location.setAttributeIfNotNull("start", locationNode.path("start_pos").asText());
         location.setAttributeIfNotNull("end", locationNode.path("end_pos").asText());
@@ -179,7 +173,7 @@ public class PombeGenesConverter extends BioFileConverter
             default:
                 location.setAttribute("strand", "0");
         }
-        location.setReference("locatedOn", gene);
+        location.setReference("locatedOn", bioEntity);
         try {
             store(location);
         } catch (ObjectStoreException ex) {
@@ -202,6 +196,29 @@ public class PombeGenesConverter extends BioFileConverter
             proteins.put(uniprotId, protein);
             return protein;
         }
+    }
+
+    private void storeTranscripts(JsonNode transcripts, Item gene) {
+        List<String> transcriptIds = new ArrayList<>();
+        for (JsonNode transcriptNode : transcripts) {
+            Item transcript = createItem("Transcript");
+            transcript.setAttributeIfNotNull("primaryIdentifier", transcriptNode.path("uniquename").asText());
+            //set chromosome and chromosome location
+            JsonNode location = transcriptNode.path("location");
+            if (location != null) {
+                String chromosomePrimaryIdentifier = location.path("chromosome_name").asText();
+                transcript.setReference("chromosome", storeChromosome(chromosomePrimaryIdentifier));
+                transcript.setReference("chromosomeLocation", storeLocation(location, transcript));
+            }
+            transcript.setReference("gene", gene);
+            try {
+                store(transcript);
+                transcriptIds.add(transcript.getIdentifier());
+            } catch (ObjectStoreException ex) {
+                throw new RuntimeException("Error storing transcript ", ex);
+            }
+        }
+        gene.setCollection("transcripts", transcriptIds);
     }
 
 }
