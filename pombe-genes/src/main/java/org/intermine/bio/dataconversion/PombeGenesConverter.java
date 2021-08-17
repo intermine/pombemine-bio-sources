@@ -19,21 +19,11 @@ import org.intermine.dataconversion.ItemWriter;
 import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
-import org.intermine.xml.full.Reference;
-import org.intermine.xml.full.ReferenceList;
 
 
 import java.io.File;
 import java.io.Reader;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Date;
-import java.util.ArrayList;
-import java.util.Set;
+import java.util.*;
 
 
 /**
@@ -101,13 +91,15 @@ public class PombeGenesConverter extends BioFileConverter
 
         //set organism
         String taxonId = geneRoot.path("taxonid").asText();
-        gene.setReference("organism", createOrganism(taxonId));
+        gene.setReference("organism", storeOrganism(taxonId));
+        //set synonyms
+        gene.setCollection("synonyms", storeSynonyms(geneRoot.path("synonyms")));
         //set chromosome and chromosome location
         JsonNode location = geneRoot.path("location");
         if (location != null) {
             String chromosomePrimaryIdentifier = location.path("chromosome_name").asText();
-            gene.setReference("chromosome", createChromosome(chromosomePrimaryIdentifier));
-            gene.setReference("chromosomeLocation", createLocation(location, gene));
+            gene.setReference("chromosome", storeChromosome(chromosomePrimaryIdentifier));
+            gene.setReference("chromosomeLocation", storeLocation(location, gene));
         }
         //set protein
         String uniprotId = geneRoot.path("uniprot_identifier").asText();
@@ -122,18 +114,7 @@ public class PombeGenesConverter extends BioFileConverter
         }
     }
 
-    private void storeOrganims() {
-        try {
-            for (String taxonId : organisms.keySet()) {
-                Item organism = organisms.get(taxonId);
-                store(organism);
-            }
-        } catch (ObjectStoreException e) {
-            throw new RuntimeException("Error storing organism ", e);
-        }
-    }
-
-    private Item createOrganism(String taxonId) {
+    private Item storeOrganism(String taxonId) {
         if (organisms.containsKey(taxonId)) {
             return organisms.get(taxonId);
         } else {
@@ -149,7 +130,24 @@ public class PombeGenesConverter extends BioFileConverter
         }
     }
 
-    private Item createChromosome(String primaryIdentifier) {
+    private List<String> storeSynonyms(JsonNode synonyms) {
+        List<String> synonymIds = new ArrayList<>();
+        for (JsonNode synonymNode : synonyms) {
+            Item synonym = createItem("Synonym");
+            synonym.setAttributeIfNotNull("value", synonymNode.path("name").asText());
+            synonym.setAttributeIfNotNull("type", synonymNode.path("type").asText());
+            try {
+                store(synonym);
+                synonymIds.add(synonym.getIdentifier());
+            } catch (ObjectStoreException ex) {
+                throw new RuntimeException("Error storing synonym ", ex);
+            }
+        }
+        return synonymIds;
+
+    }
+
+    private Item storeChromosome(String primaryIdentifier) {
         if (chromosomes.containsKey(primaryIdentifier)) {
             return chromosomes.get(primaryIdentifier);
         } else {
@@ -164,7 +162,7 @@ public class PombeGenesConverter extends BioFileConverter
             return chromosome;
         }
     }
-    private Item createLocation(JsonNode locationNode, Item gene) {
+    private Item storeLocation(JsonNode locationNode, Item gene) {
         Item location = createItem("Location");
         location.setAttributeIfNotNull("start", locationNode.path("start_pos").asText());
         location.setAttributeIfNotNull("end", locationNode.path("end_pos").asText());
@@ -202,6 +200,4 @@ public class PombeGenesConverter extends BioFileConverter
         }
     }
 
-    private void clearMaps() {
-    }
 }
