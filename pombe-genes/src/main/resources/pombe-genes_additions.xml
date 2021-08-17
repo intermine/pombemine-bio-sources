@@ -1,5 +1,8 @@
 <?xml version="1.0"?>
 <classes>
+	<class name="Gene" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000704">
+		<attribute name="featureType" type="java.lang.String"/>
+	</class>
 	<class name="Synonym" is-interface="true" term="http://semanticscience.org/resource/SIO_000122">
 		<attribute name="type" type="java.lang.String"/>
 	</class>

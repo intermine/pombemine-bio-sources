@@ -88,6 +88,10 @@ public class PombeGenesConverter extends BioFileConverter
         if (!StringUtils.isEmpty(name)) {
             gene.setAttribute("name", name);
         }
+        String featureType = geneRoot.path("featureType").asText();
+        if (!StringUtils.isEmpty(featureType)) {
+            gene.setAttribute("featureType", featureType);
+        }
 
         //set organism
         String taxonId = geneRoot.path("taxonid").asText();
