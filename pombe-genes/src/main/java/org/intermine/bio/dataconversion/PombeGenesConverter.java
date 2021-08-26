@@ -97,12 +97,11 @@ public class PombeGenesConverter extends BioFileConverter
             gene.setReference("chromosomeLocation", storeLocation(location, gene));
         }
         //set transcripts
-        storeTranscripts(geneRoot, gene);
+        storeTranscripts(geneRoot.path("transcripts"), gene);
         //set protein
         String uniprotId = geneRoot.path("uniprot_identifier").asText();
         if (!StringUtils.isEmpty(uniprotId)) {
-            storeProtein(uniprotId);
-            gene.setCollection("proteins", Arrays.asList(proteins.get(uniprotId).getIdentifier()));
+            storeProtein(uniprotId, gene);
         }
         try {
             store(gene);
@@ -142,7 +141,6 @@ public class PombeGenesConverter extends BioFileConverter
             }
         }
         bioEntity.setCollection("synonyms", synonymIds);
-
     }
 
     private Item storeChromosome(String primaryIdentifier) {
@@ -182,11 +180,12 @@ public class PombeGenesConverter extends BioFileConverter
         return location;
     }
 
-    private Item storeProtein(String uniprotId) {
+    private void storeProtein(String uniprotId, Item bioEntity) {
+        Item protein;
         if (proteins.containsKey(uniprotId)) {
-            return proteins.get(uniprotId);
+            protein = proteins.get(uniprotId);
         } else {
-            Item protein = createItem("Protein");
+            protein = createItem("Protein");
             protein.setAttributeIfNotNull("primaryAccession", uniprotId);
             try {
                 store(protein);
@@ -194,8 +193,28 @@ public class PombeGenesConverter extends BioFileConverter
                 throw new RuntimeException("Error storing protein ", ex);
             }
             proteins.put(uniprotId, protein);
-            return protein;
         }
+        bioEntity.setCollection("proteins", Arrays.asList(protein.getIdentifier()));
+    }
+
+    private void storeProtein(JsonNode proteinNode, Item bioEntity) {
+        String primaryAccession = proteinNode.path("uniquename").asText();
+        Item protein;
+        if (proteins.containsKey(primaryAccession)) {
+            protein = proteins.get(primaryAccession);
+        } else {
+            protein = createItem("Protein");
+            protein.setAttributeIfNotNull("primaryAccession", primaryAccession);
+            protein.setAttributeIfNotNull("name", proteinNode.path("prodict").asText());
+            protein.setAttributeIfNotNull("molecularWeight", proteinNode.path("molecular_weight").asText());
+            try {
+                store(protein);
+            } catch (ObjectStoreException ex) {
+                throw new RuntimeException("Error storing protein ", ex);
+            }
+            bioEntity.setReference("protein", protein);
+        }
+        proteins.put(primaryAccession, protein);
     }
 
     private void storeTranscripts(JsonNode transcripts, Item gene) {
@@ -203,6 +222,7 @@ public class PombeGenesConverter extends BioFileConverter
         for (JsonNode transcriptNode : transcripts) {
             Item transcript = createItem("Transcript");
             transcript.setAttributeIfNotNull("primaryIdentifier", transcriptNode.path("uniquename").asText());
+            transcript.setAttributeIfNotNull("transcriptType", transcriptNode.path("transcript_type").asText());
             //set chromosome and chromosome location
             JsonNode location = transcriptNode.path("location");
             if (location != null) {
@@ -211,6 +231,7 @@ public class PombeGenesConverter extends BioFileConverter
                 transcript.setReference("chromosomeLocation", storeLocation(location, transcript));
             }
             transcript.setReference("gene", gene);
+            storeProtein(transcriptNode.path("protein"), transcript);
             try {
                 store(transcript);
                 transcriptIds.add(transcript.getIdentifier());
