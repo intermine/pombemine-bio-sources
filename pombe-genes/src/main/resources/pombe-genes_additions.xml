@@ -9,4 +9,7 @@
 	<class name="Transcript" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0000673">
 		<attribute name="transcriptType" type="java.lang.String"/>
 	</class>
+	<class name="Location" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0000735">
+		<attribute name="phase" type="java.lang.Integer"/>
+	</class>
 </classes>
