@@ -235,6 +235,7 @@ public class PombeGenesConverter extends BioFileConverter
             protein.setAttributeIfNotNull("primaryAccession", primaryAccession);
             protein.setAttributeIfNotNull("name", proteinNode.path("product").asText());
             protein.setAttributeIfNotNull("molecularWeight", proteinNode.path("molecular_weight").asText());
+            storeSequence(proteinNode.path("sequence").asText(), protein);
             setOrganism(protein, organism);
             try {
                 store(protein);
@@ -244,6 +245,19 @@ public class PombeGenesConverter extends BioFileConverter
             bioEntity.setReference("protein", protein);
         }
         proteins.put(primaryAccession, protein);
+    }
+
+    private void storeSequence(String sequence, Item protein) {
+        if (!sequence.isEmpty()) {
+            Item sequenceItem = createItem("Sequence");
+            sequenceItem.setAttribute("residues", sequence);
+            protein.setReference("sequence", sequenceItem);
+            try {
+                store(sequenceItem);
+            } catch (ObjectStoreException ex) {
+                throw new RuntimeException("Error storing sequence ", ex);
+            }
+        }
     }
 
     private void storeCDS(JsonNode cdsNode, Item bioEntity, Item organism) {
