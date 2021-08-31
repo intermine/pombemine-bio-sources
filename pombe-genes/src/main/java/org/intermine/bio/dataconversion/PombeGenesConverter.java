@@ -164,8 +164,10 @@ public class PombeGenesConverter extends BioFileConverter
         switch (strandValue) {
             case "forward":
                 location.setAttribute("strand", "1");
+                break;
             case "reverse":
                 location.setAttribute("strand", "-1");
+                break;
             default:
                 location.setAttribute("strand", "0");
         }
@@ -204,6 +206,8 @@ public class PombeGenesConverter extends BioFileConverter
             transcript.setAttributeIfNotNull("primaryIdentifier", transcriptNode.path("uniquename").asText());
             transcript.setAttributeIfNotNull("transcriptType", transcriptNode.path("transcript_type").asText());
             setOrganism(transcript, organism);
+            //set part
+            storeParts(transcriptNode.path("parts"), gene, organism);
             //set chromosome and chromosome location
             JsonNode location = transcriptNode.path("location");
             if (location != null) {
@@ -223,6 +227,57 @@ public class PombeGenesConverter extends BioFileConverter
             }
         }
         gene.setCollection("transcripts", transcriptIds);
+    }
+
+    private void storeParts(JsonNode parts, Item gene, Item organism) {
+        if (parts != null) {
+            List<String> featureIds = new ArrayList<>();
+            for (JsonNode partNode : parts) {
+                String featureType = partNode.path("feature_type").asText();
+                Item feature = null;
+                String collectionName = null;
+                switch (featureType) {
+                    case "exon":
+                        feature = createItem("Exon");
+                        collectionName = "exons";
+                        break;
+                    case "five_prime_utr":
+                        feature = createItem("FivePrimeUTR");
+                        collectionName = "UTRs";
+                        break;
+                    case "three_prime_utr":
+                        feature = createItem("ThreePrimeUTR");
+                        collectionName = "UTRs";
+                        break;
+                    case "cds_intron":
+                        feature = createItem("Intron");
+                        collectionName = "introns";
+                        break;
+                }
+                if (feature != null) {
+                    feature.setAttributeIfNotNull("primaryIdentifier", partNode.path("uniquename").asText());
+                    setOrganism(feature, organism);
+                    //set chromosome and chromosome location
+                    JsonNode location = partNode.path("location");
+                    if (location != null) {
+                        String chromosomePrimaryIdentifier = location.path("chromosome_name").asText();
+                        Item chromosome = storeChromosome(chromosomePrimaryIdentifier, organism);
+                        feature.setReference("chromosome", chromosome);
+                        feature.setReference("chromosomeLocation", storeLocation(location, feature, chromosome));
+                    }
+                    if (!featureType.equals("cds_intron")) {
+                        feature.setReference("gene", gene);
+                    } //otherwise should be genes?
+                    try {
+                        store(feature);
+                        featureIds.add(feature.getIdentifier());
+                    } catch (ObjectStoreException ex) {
+                        throw new RuntimeException("Error storing feature ", ex);
+                    }
+                    gene.setCollection(collectionName, featureIds);
+                }
+            }
+        }
     }
 
     private void storeProtein(JsonNode proteinNode, Item bioEntity, Item organism) {
