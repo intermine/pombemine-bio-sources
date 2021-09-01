@@ -82,12 +82,8 @@ public class PombeGenesConverter extends BioFileConverter
         storeSynonyms(geneRoot.path("synonyms"), gene);
         //set chromosome and chromosome location
         JsonNode location = geneRoot.path("location");
-        if (location != null) {
-            String chromosomePrimaryIdentifier = location.path("chromosome_name").asText();
-            Item chromosome = storeChromosome(chromosomePrimaryIdentifier, organism);
-            gene.setReference("chromosome", chromosome);
-            gene.setReference("chromosomeLocation", storeLocation(location, gene, chromosome));
-        }
+        Item chromosome = storeChromosome(location, gene, organism);
+        storeLocation(location, gene, chromosome);
         //set transcripts
         storeTranscripts(geneRoot.path("transcripts"), gene, organism);
         //set protein
@@ -139,46 +135,54 @@ public class PombeGenesConverter extends BioFileConverter
         bioEntity.setCollection("synonyms", synonymIds);
     }
 
-    private Item storeChromosome(String primaryIdentifier, Item organism) {
-        if (chromosomes.containsKey(primaryIdentifier)) {
-            return chromosomes.get(primaryIdentifier);
-        } else {
-            Item chromosome = createItem("Chromosome");
-            chromosome.setAttributeIfNotNull("primaryIdentifier", primaryIdentifier);
-            setOrganism(chromosome, organism);
-            try {
-                store(chromosome);
-            } catch (ObjectStoreException ex) {
-                throw new RuntimeException("Error storing protein ", ex);
+    private Item storeChromosome(JsonNode location, Item bioEntity, Item organism) {
+        Item chromosome = null;
+        if (location != null) {
+            String primaryIdentifier = location.path("chromosome_name").asText();
+            if (chromosomes.containsKey(primaryIdentifier)) {
+                chromosome = chromosomes.get(primaryIdentifier);
+            } else {
+                chromosome = createItem("Chromosome");
+                chromosome.setAttributeIfNotNull("primaryIdentifier", primaryIdentifier);
+                setOrganism(chromosome, organism);
+                try {
+                    store(chromosome);
+                } catch (ObjectStoreException ex) {
+                    throw new RuntimeException("Error storing Item chromosome ", ex);
+                }
+                chromosomes.put(primaryIdentifier, chromosome);
             }
-            chromosomes.put(primaryIdentifier, chromosome);
-            return chromosome;
+            bioEntity.setReference("chromosome", chromosome);
         }
+        return chromosome;
     }
-    private Item storeLocation(JsonNode locationNode, Item bioEntity, Item chromosome) {
-        Item location = createItem("Location");
-        location.setAttributeIfNotNull("start", locationNode.path("start_pos").asText());
-        location.setAttributeIfNotNull("end", locationNode.path("end_pos").asText());
-        location.setAttributeIfNotNull("phase", locationNode.path("phase").asText());
-        String strandValue = locationNode.path("strand").asText();
-        switch (strandValue) {
-            case "forward":
-                location.setAttribute("strand", "1");
-                break;
-            case "reverse":
-                location.setAttribute("strand", "-1");
-                break;
-            default:
-                location.setAttribute("strand", "0");
+
+    private void storeLocation(JsonNode locationNode, Item bioEntity, Item chromosome) {
+        if (locationNode != null) {
+            Item location = createItem("Location");
+            location.setAttributeIfNotNull("start", locationNode.path("start_pos").asText());
+            location.setAttributeIfNotNull("end", locationNode.path("end_pos").asText());
+            location.setAttributeIfNotNull("phase", locationNode.path("phase").asText());
+            String strandValue = locationNode.path("strand").asText();
+            switch (strandValue) {
+                case "forward":
+                    location.setAttribute("strand", "1");
+                    break;
+                case "reverse":
+                    location.setAttribute("strand", "-1");
+                    break;
+                default:
+                    location.setAttribute("strand", "0");
+            }
+            location.setReference("feature", bioEntity);
+            location.setReference("locatedOn", chromosome);
+            bioEntity.setReference("chromosomeLocation", location);
+            try {
+                store(location);
+            } catch (ObjectStoreException ex) {
+                throw new RuntimeException("Error storing location ", ex);
+            }
         }
-        location.setReference("feature", bioEntity);
-        location.setReference("locatedOn", chromosome);
-        try {
-            store(location);
-        } catch (ObjectStoreException ex) {
-            throw new RuntimeException("Error storing protein ", ex);
-        }
-        return location;
     }
 
     private void storeProtein(String uniprotId, Item bioEntity, Item organism) {
@@ -210,12 +214,8 @@ public class PombeGenesConverter extends BioFileConverter
             storeParts(transcriptNode.path("parts"), gene, organism);
             //set chromosome and chromosome location
             JsonNode location = transcriptNode.path("location");
-            if (location != null) {
-                String chromosomePrimaryIdentifier = location.path("chromosome_name").asText();
-                Item chromosome =  storeChromosome(chromosomePrimaryIdentifier, organism);
-                transcript.setReference("chromosome", chromosome);
-                transcript.setReference("chromosomeLocation", storeLocation(location, transcript, chromosome));
-            }
+            Item chromosome = storeChromosome(location, gene, organism);
+            storeLocation(location, transcript, chromosome);
             storeProtein(transcriptNode.path("protein"), transcript, organism);
             storeCDS(transcriptNode.path("cds_location"), transcript, organism);
             transcript.setReference("gene", gene);
@@ -259,12 +259,9 @@ public class PombeGenesConverter extends BioFileConverter
                     setOrganism(feature, organism);
                     //set chromosome and chromosome location
                     JsonNode location = partNode.path("location");
-                    if (location != null) {
-                        String chromosomePrimaryIdentifier = location.path("chromosome_name").asText();
-                        Item chromosome = storeChromosome(chromosomePrimaryIdentifier, organism);
-                        feature.setReference("chromosome", chromosome);
-                        feature.setReference("chromosomeLocation", storeLocation(location, feature, chromosome));
-                    }
+                    Item chromosome = storeChromosome(location, gene, organism);
+                    storeLocation(location, feature, chromosome);
+                    storeSequence(partNode.path("residues").asText(), feature);
                     if (!featureType.equals("cds_intron")) {
                         feature.setReference("gene", gene);
                     } //otherwise should be genes?
@@ -302,11 +299,11 @@ public class PombeGenesConverter extends BioFileConverter
         proteins.put(primaryAccession, protein);
     }
 
-    private void storeSequence(String sequence, Item protein) {
+    private void storeSequence(String sequence, Item sequenceFeature) {
         if (!sequence.isEmpty()) {
             Item sequenceItem = createItem("Sequence");
             sequenceItem.setAttribute("residues", sequence);
-            protein.setReference("sequence", sequenceItem);
+            sequenceFeature.setReference("sequence", sequenceItem);
             try {
                 store(sequenceItem);
             } catch (ObjectStoreException ex) {
@@ -320,10 +317,8 @@ public class PombeGenesConverter extends BioFileConverter
         cds.setAttribute("primaryIdentifier", createCDSIdentifier(bioEntity));
         cds.setReference("transcript", bioEntity);
         setOrganism(cds, organism);
-        String chromosomePrimaryIdentifier = cdsNode.path("chromosome_name").asText();
-        Item chromosome = storeChromosome(chromosomePrimaryIdentifier, organism);
-        cds.setReference("chromosome", chromosome);
-        cds.setReference("chromosomeLocation", storeLocation(cdsNode, cds, chromosome));
+        Item chromosome = storeChromosome(cdsNode, cds, organism);
+        storeLocation(cdsNode, cds, chromosome);
         try {
             store(cds);
         } catch (ObjectStoreException ex) {
