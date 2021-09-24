@@ -89,7 +89,7 @@ public class PombeGenesConverter extends BioFileConverter
         //set protein
         String uniprotId = geneRoot.path("uniprot_identifier").asText();
         if (!StringUtils.isEmpty(uniprotId)) {
-            storeProtein(uniprotId, gene, organism);
+            storeUniProtEntry(uniprotId, gene, organism);
         }
         try {
             store(gene);
@@ -185,13 +185,14 @@ public class PombeGenesConverter extends BioFileConverter
         }
     }
 
-    private void storeProtein(String uniprotId, Item bioEntity, Item organism) {
+    private void storeUniProtEntry(String uniprotId, Item gene, Item organism) {
         Item protein;
         if (proteins.containsKey(uniprotId)) {
             protein = proteins.get(uniprotId);
         } else {
-            protein = createItem("Protein");
+            protein = createItem("UniProtEntry");
             protein.setAttributeIfNotNull("primaryAccession", uniprotId);
+            protein.setReference("gene", gene);
             setOrganism(protein, organism);
             try {
                 store(protein);
@@ -200,7 +201,7 @@ public class PombeGenesConverter extends BioFileConverter
             }
             proteins.put(uniprotId, protein);
         }
-        bioEntity.setCollection("proteins", Arrays.asList(protein.getIdentifier()));
+        gene.setReference("uniProtEntry", protein);
     }
 
     private void storeTranscripts(JsonNode transcripts, Item gene, Item organism) {
