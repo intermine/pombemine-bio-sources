@@ -1,7 +1,8 @@
 rootProject.name = 'bio-sources-pombe'
 
-include ':bio-source-pombe-genes',':bio-source-pombe-uniprot'
+include ':bio-source-pombe-genes',':bio-source-pombe-uniprot', ':bio-source-pombe-go-annotation'
 
 project(':bio-source-pombe-genes').projectDir = new File(settingsDir, './pombe-genes')
 project(':bio-source-pombe-uniprot').projectDir = new File(settingsDir, './pombe-uniprot')
+project(':bio-source-pombe-go-annotation').projectDir = new File(settingsDir, './pombe-go-annotation')
 
