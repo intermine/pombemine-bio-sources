@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<classes>
+  <class name="Gene" is-interface="true">
+    <collection name="alleles" referenced-type="Allele" reverse-reference="gene"/>
+  </class>
+  <class name="Allele" extends="BioEntity" is-interface="true">
+    <attribute name="description" type="java.lang.String"/>
+    <attribute name="type" type="java.lang.String"/>
+    <attribute name="expression" type="java.lang.String"/>
+    <reference name="gene" referenced-type="Gene" reverse-reference="alleles"/>
+    <collection name="phenotypeAnnotations" referenced-type="PhenotypeAnnotation" reverse-reference="allele"/>
+  </class>
+  <class name="PhenotypeAnnotation" extends="OntologyAnnotation" is-interface="true">
+    <attribute name="description" type="java.lang.String"/>
+    <attribute name="annotationExtension" type="java.lang.String"/>
+    <reference name="allele" referenced-type="Allele" reverse-reference="phenotypeAnnotations"/>
+    <reference name="penetrance" referenced-type="PhenotypeTerm"/>
+    <reference name="severity" referenced-type="PhenotypeTerm"/>
+  </class>
+
+  <class name="PhenotypeTerm" extends="OntologyTerm" is-interface="true"/>
+</classes>
