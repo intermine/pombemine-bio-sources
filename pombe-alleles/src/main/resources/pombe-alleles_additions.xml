@@ -12,11 +12,22 @@
   </class>
   <class name="PhenotypeAnnotation" extends="OntologyAnnotation" is-interface="true">
     <attribute name="description" type="java.lang.String"/>
-    <attribute name="annotationExtension" type="java.lang.String"/>
+    <reference name="annotationExtension" referenced-type="AnnotationExtension"/>
     <reference name="allele" referenced-type="Allele" reverse-reference="phenotypeAnnotations"/>
-    <reference name="penetrance" referenced-type="PhenotypeTerm"/>
+    <attribute name="penetrance" type="java.lang.String"/>
     <reference name="severity" referenced-type="PhenotypeTerm"/>
+    <collection name="conditions" referenced-type="Condition"/>
+  </class>
+
+  <class name="AnnotationExtension" is-interface="true">
+    <attribute name="description" type="java.lang.String"/>
   </class>
 
   <class name="PhenotypeTerm" extends="OntologyTerm" is-interface="true"/>
+
+  <class name="Condition" extends="PECOTerm" is-interface="true">
+  </class>
+
+  <class name="PECOTerm" extends="OntologyTerm" is-interface="true">
+  </class>
 </classes>

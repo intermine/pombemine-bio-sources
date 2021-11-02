@@ -41,6 +41,8 @@ public class PombeAllelesConverter extends BioFileConverter
     private Map<String, Integer> storedGenesIds;
     private List<Allele> alleles;
     private Map<String, List<String>> geneAllelesRefIds;
+    protected Map<String, String> phenotypeTerms = new LinkedHashMap<String, String>();
+    protected Map<String, String> pecoTerms = new LinkedHashMap<String, String>();
 
     /**
      * Constructor
@@ -80,9 +82,9 @@ public class PombeAllelesConverter extends BioFileConverter
 
         BufferedReader br = new BufferedReader(reader);
         String line = null;
-
+        int counter = 0;
         // loop through entire file
-        while ((line = br.readLine()) != null) {
+        while ((line = br.readLine()) != null && counter <5000) {
             if (isHeader(line)) {
                 continue;
             }
@@ -102,8 +104,14 @@ public class PombeAllelesConverter extends BioFileConverter
                 String geneRefId = storeGene(geneIdentifier, geneSymbol);
                 Allele allele = new Allele(line, geneRefId);
                 storeAllele(allele);
+                String phenotypeTermIdentifier = createPhenotypeTerm(fypoId);
+                String severityTermIdentifier = createPhenotypeTerm(severity);
+                List<String> conditionsTermIdentifiers = createPECOTerms(condition);
+                storePhenotypeAnnotation(phenotypeTermIdentifier, penetrance,
+                        severityTermIdentifier,conditionsTermIdentifiers);
             }
             storeGeneAlleles();
+            counter++;
         }
     }
 
@@ -136,6 +144,72 @@ public class PombeAllelesConverter extends BioFileConverter
         return genes.get(primaryIdentifier);
     }
 
+    private Integer storePhenotypeAnnotation(
+            String pynotypeTermIdentifier, String penetrance,
+            String severityTermIdentifier, List<String> conditionsTermIdentifiers)
+            throws ObjectStoreException {
+        Item phenotypeAnnotation = createItem("PhenotypeAnnotation");
+        if(!StringUtils.isEmpty(pynotypeTermIdentifier)) {
+            phenotypeAnnotation.setReference("ontologyTerm", pynotypeTermIdentifier);
+        }
+        phenotypeAnnotation.setAttributeIfNotNull("penetrance", penetrance);
+        if(!StringUtils.isEmpty(severityTermIdentifier)) {
+            phenotypeAnnotation.setReference("severity", severityTermIdentifier);
+        }
+        if(!conditionsTermIdentifiers.isEmpty()) {
+            phenotypeAnnotation.setCollection("conditions", conditionsTermIdentifiers);
+        }
+
+        /*if ("gene".equals(productType)) {
+            addProductCollection(productIdentifier, goAnnotation.getIdentifier());
+        }
+        if (annotationExtRefId != null) {
+            goAnnotation.setReference("annotationExtension", annotationExtRefId);
+        }*/
+
+        return store(phenotypeAnnotation);
+    }
+
+    private String createPhenotypeTerm(String identifier) throws ObjectStoreException {
+        if (StringUtils.isEmpty(identifier)) {
+            return null;
+        }
+
+        String phenotypeTermIdentifier = phenotypeTerms.get(identifier);
+        if (phenotypeTermIdentifier == null) {
+            Item item = createItem("PhenotypeTerm");
+            item.setAttribute("identifier", identifier);
+            //item.addToCollection("dataSets", datasetRefId);
+            store(item);
+
+            phenotypeTermIdentifier = item.getIdentifier();
+            phenotypeTerms.put(identifier, phenotypeTermIdentifier);
+        }
+        return phenotypeTermIdentifier;
+    }
+
+    private List<String> createPECOTerms(String identifiers) throws ObjectStoreException {
+        List<String> pecoTermsIdentifiers = new ArrayList<String>();
+        if (StringUtils.isEmpty(identifiers)) {
+            return pecoTermsIdentifiers;
+        }
+        String[] identifiersList = identifiers.split(",");
+        for (String identifier : identifiersList) {
+            String pecoTermIdentifier = pecoTerms.get(identifier);
+            if (pecoTermIdentifier == null) {
+                Item item = createItem("Condition");
+                item.setAttribute("identifier", identifier);
+                //item.addToCollection("dataSets", datasetRefId);
+                store(item);
+
+                pecoTermIdentifier = item.getIdentifier();
+                pecoTerms.put(identifier, pecoTermIdentifier);
+            }
+            pecoTermsIdentifiers.add(pecoTermIdentifier);
+        }
+        return pecoTermsIdentifiers;
+    }
+
     private void storeAllele(Allele allele) throws ObjectStoreException {
         if (!alleles.contains(allele)) {
             alleles.add(allele);
@@ -150,8 +224,10 @@ public class PombeAllelesConverter extends BioFileConverter
                 allelesRefIds = geneAllelesRefIds.get(allele.geneRefId);
             } else {
                 allelesRefIds = new ArrayList<>();
+                geneAllelesRefIds.put(allele.geneRefId, allelesRefIds);
             }
-            allelesRefIds.add(alleleItem.getIdentifier());
+            String alleleRefId = alleleItem.getIdentifier();
+            allelesRefIds.add(alleleRefId);
         }
     }
 
