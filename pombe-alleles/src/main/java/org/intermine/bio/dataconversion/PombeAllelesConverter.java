@@ -34,7 +34,7 @@ public class PombeAllelesConverter extends BioFileConverter
 {
     private String datasource, dataset, licence;
     private String datasetRefId = null;
-    private static final String DATASET_TITLE = "Pombemine phenotypes";
+    private static final String DATASET_TITLE = "Pombemine phenotypes data set";
     private static final String DATA_SOURCE_NAME = "POMBE";
     private static final Logger LOG = Logger.getLogger(PombeAllelesConverter.class);
     private Map<String, String> genes;
@@ -79,6 +79,7 @@ public class PombeAllelesConverter extends BioFileConverter
     @Override
     public void process(Reader reader) throws ObjectStoreException, IOException {
         initialiseMapsForFile();
+        datasetRefId = setDefaultDataset();
 
         BufferedReader br = new BufferedReader(reader);
         String line = null;
@@ -123,6 +124,14 @@ public class PombeAllelesConverter extends BioFileConverter
         storedGenesIds = new HashMap<>();
         alleles = new ArrayList<>();
         geneAllelesRefIds = new LinkedHashMap<String, List<String>>();
+    }
+
+    private String setDefaultDataset() throws ObjectStoreException {
+        if (dataset == null) {
+            dataset = DATASET_TITLE;
+        }
+        String datasourceRefId = getDataSource(datasource);
+        return getDataSet(dataset, datasourceRefId, licence);
     }
 
     private boolean isHeader(String line) {
@@ -179,7 +188,7 @@ public class PombeAllelesConverter extends BioFileConverter
         if (phenotypeTermIdentifier == null) {
             Item item = createItem("PhenotypeTerm");
             item.setAttribute("identifier", identifier);
-            //item.addToCollection("dataSets", datasetRefId);
+            item.addToCollection("dataSets", datasetRefId);
             store(item);
 
             phenotypeTermIdentifier = item.getIdentifier();
@@ -199,7 +208,7 @@ public class PombeAllelesConverter extends BioFileConverter
             if (pecoTermIdentifier == null) {
                 Item item = createItem("Condition");
                 item.setAttribute("identifier", identifier);
-                //item.addToCollection("dataSets", datasetRefId);
+                item.addToCollection("dataSets", datasetRefId);
                 store(item);
 
                 pecoTermIdentifier = item.getIdentifier();
