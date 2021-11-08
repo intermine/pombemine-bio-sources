@@ -46,6 +46,7 @@ public class PombeAllelesConverter extends BioFileConverter
     private Map<String, List<String>> alleleAnnotationsRefId;
     protected Map<String, String> phenotypeTerms = new LinkedHashMap<String, String>();
     protected Map<String, String> pecoTerms = new LinkedHashMap<String, String>();
+    private Map<String, String> evidences;
 
     /**
      * Constructor
@@ -112,7 +113,8 @@ public class PombeAllelesConverter extends BioFileConverter
                 String phenotypeTermIdentifier = storePhenotypeTerm(fypoId);
                 String severityTermIdentifier = storePhenotypeTerm(severity);
                 List<String> conditionsTermIdentifiers = storePECOTerms(condition);
-                storePhenotypeAnnotation(alleleIdentifier, phenotypeTermIdentifier,
+                String evidenceIdentifier = storeEvidence(pubMedIdentifier, evidence);
+                storePhenotypeAnnotation(alleleIdentifier, phenotypeTermIdentifier, evidenceIdentifier,
                         penetrance, severityTermIdentifier,conditionsTermIdentifiers);
             }
             storeGeneAlleles();
@@ -132,6 +134,7 @@ public class PombeAllelesConverter extends BioFileConverter
         storedAllelesIds = new LinkedHashMap<>();
         geneAllelesRefIds = new LinkedHashMap<>();
         alleleAnnotationsRefId = new LinkedHashMap<>();
+        evidences = new LinkedHashMap<>();
     }
 
     private String setDefaultDataset() throws ObjectStoreException {
@@ -177,8 +180,23 @@ public class PombeAllelesConverter extends BioFileConverter
         return pubRefId;
     }
 
-    private Integer storePhenotypeAnnotation(
-            String alleleIdentifier, String pynotypeTermIdentifier, String penetrance,
+    private String storeEvidence(String pubMedIdentifier, String evidence) throws ObjectStoreException {
+        String evidenceRefId = evidences.get(pubMedIdentifier+evidence);
+        if (evidenceRefId == null) {
+            Item evidenceItem = createItem("OntologyEvidence");
+            List<String> publication = new ArrayList<String>();
+            publication.add(pubMedIdentifier);
+            evidenceItem.setAttributeIfNotNull("description", evidence);
+            evidenceItem.setCollection("publications", publication);
+            store(evidenceItem);
+            evidenceRefId = evidenceItem.getIdentifier();
+            evidences.put(pubMedIdentifier+evidence, evidenceRefId);
+        }
+        return evidenceRefId;
+    }
+
+    private Integer storePhenotypeAnnotation(String alleleIdentifier,
+            String phenotypeTermIdentifier, String evidenceIdentifier, String penetrance,
             String severityTermIdentifier, List<String> conditionsTermIdentifiers)
             throws ObjectStoreException {
         Item phenotypeAnnotation = createItem("PhenotypeAnnotation");
@@ -187,8 +205,8 @@ public class PombeAllelesConverter extends BioFileConverter
             phenotypeAnnotation.setReference("subject", alleleIdentifier);
         }
         phenotypeAnnotation.addToCollection("dataSets", datasetRefId);
-        if(!StringUtils.isEmpty(pynotypeTermIdentifier)) {
-            phenotypeAnnotation.setReference("ontologyTerm", pynotypeTermIdentifier);
+        if(!StringUtils.isEmpty(phenotypeTermIdentifier)) {
+            phenotypeAnnotation.setReference("ontologyTerm", phenotypeTermIdentifier);
         }
         phenotypeAnnotation.setAttributeIfNotNull("penetrance", penetrance);
         if(!StringUtils.isEmpty(severityTermIdentifier)) {
@@ -196,6 +214,11 @@ public class PombeAllelesConverter extends BioFileConverter
         }
         if(!conditionsTermIdentifiers.isEmpty()) {
             phenotypeAnnotation.setCollection("conditions", conditionsTermIdentifiers);
+        }
+        if(!evidenceIdentifier.isEmpty()) {
+            List<String> evidence = new ArrayList<>();
+            evidence.add(evidenceIdentifier);
+            phenotypeAnnotation.setCollection("evidence", evidence);
         }
 
         Integer id = store(phenotypeAnnotation);
@@ -205,6 +228,8 @@ public class PombeAllelesConverter extends BioFileConverter
             alleleAnnotationsRefId.put(alleleIdentifier, annotationsRefIds);
         }
         annotationsRefIds.add(phenotypeAnnotation.getIdentifier());
+
+
 
         return id;
     }

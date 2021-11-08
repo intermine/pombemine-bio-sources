@@ -23,6 +23,11 @@
     <attribute name="description" type="java.lang.String"/>
   </class>
 
+  <class name="OntologyEvidence" is-interface="true">
+    <attribute name="description" type="java.lang.String"/>
+    <collection name="publications" referenced-type="Publication"/>
+  </class>
+
   <class name="PhenotypeTerm" extends="OntologyTerm" is-interface="true"/>
 
   <class name="Condition" extends="PECOTerm" is-interface="true">
