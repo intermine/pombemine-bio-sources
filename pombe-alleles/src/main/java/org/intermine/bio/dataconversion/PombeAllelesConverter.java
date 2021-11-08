@@ -171,6 +171,7 @@ public class PombeAllelesConverter extends BioFileConverter
                 item.setAttribute("pubMedId", pubMedId);
                 pubRefId = item.getIdentifier();
                 publications.put(pubMedId, pubRefId);
+                store(item);
             }
         }
         return pubRefId;
@@ -182,8 +183,10 @@ public class PombeAllelesConverter extends BioFileConverter
             throws ObjectStoreException {
         Item phenotypeAnnotation = createItem("PhenotypeAnnotation");
         if (alleleIdentifier != null) {
+            phenotypeAnnotation.setReference("allele", alleleIdentifier);
             phenotypeAnnotation.setReference("subject", alleleIdentifier);
         }
+        phenotypeAnnotation.addToCollection("dataSets", datasetRefId);
         if(!StringUtils.isEmpty(pynotypeTermIdentifier)) {
             phenotypeAnnotation.setReference("ontologyTerm", pynotypeTermIdentifier);
         }
@@ -247,7 +250,7 @@ public class PombeAllelesConverter extends BioFileConverter
     }
 
     private String storeAllele(Allele allele) throws ObjectStoreException {
-        Allele alleleStored = alleles.get(allele.identifier);
+        Allele alleleStored = alleles.get(allele.symbol);
         if (alleleStored == null) {
             Item alleleItem = createItem("Allele");
             alleleItem.setAttributeIfNotNull("primaryIdentifier", allele.symbol);
@@ -261,7 +264,7 @@ public class PombeAllelesConverter extends BioFileConverter
             storedAllelesIds.put(alleleRefId, id);
 
             allele.setIdentifier(alleleRefId);
-            alleles.put(alleleRefId, allele);
+            alleles.put(allele.symbol, allele);
 
             List<String> allelesRefIds = geneAllelesRefIds.get(allele.geneRefId);
             if (allelesRefIds == null) {
@@ -272,7 +275,7 @@ public class PombeAllelesConverter extends BioFileConverter
 
             return alleleRefId;
         }
-        return allele.getIdentifier();
+        return alleleStored.getIdentifier();
     }
 
     private void storeGeneAlleles() throws ObjectStoreException {
