@@ -165,7 +165,7 @@ public class PombeAllelesConverter extends BioFileConverter
     }
 
     private String storePublication(String pubMedId) throws ObjectStoreException {
-        String pubRefId = null;
+        String pubRefId = "";
         if (pubMedId != null && pubMedId.startsWith("PMID:")) {
             pubMedId = pubMedId.substring(5);
             pubRefId = publications.get(pubMedId);
@@ -288,7 +288,7 @@ public class PombeAllelesConverter extends BioFileConverter
     }
 
     private String storeAllele(Allele allele) throws ObjectStoreException {
-        Allele alleleStored = alleles.get(allele.symbol);
+        Allele alleleStored = alleles.get(allele.primaryIdentifier);
         if (alleleStored == null) {
             Item alleleItem = createItem("Allele");
             alleleItem.setAttributeIfNotNull("primaryIdentifier", allele.getPrimaryIdentifier());
@@ -303,7 +303,7 @@ public class PombeAllelesConverter extends BioFileConverter
             storedAllelesIds.put(alleleRefId, id);
 
             allele.setIdentifier(alleleRefId);
-            alleles.put(allele.symbol, allele);
+            alleles.put(allele.primaryIdentifier, allele);
 
             List<String> allelesRefIds = geneAllelesRefIds.get(allele.geneRefId);
             if (allelesRefIds == null) {
@@ -344,6 +344,7 @@ public class PombeAllelesConverter extends BioFileConverter
         String description;
         String type;
         String expression;
+        String primaryIdentifier;
         String geneRefId;
         String identifier;
 
@@ -359,10 +360,11 @@ public class PombeAllelesConverter extends BioFileConverter
             this.expression = array[4];
             this.symbol = array[9];
             this.type = array[11];
+            primaryIdentifier = createPrimaryIdentifier();
             this.geneRefId = geneRefId;
         }
 
-        public String getPrimaryIdentifier() {
+        private String createPrimaryIdentifier() {
             StringBuilder primaryidentifier = new StringBuilder();
             if (!StringUtils.isEmpty(symbol)) {
                 primaryidentifier.append(symbol);
@@ -371,6 +373,10 @@ public class PombeAllelesConverter extends BioFileConverter
                 primaryidentifier.append("(").append(description).append(")");
             }
             return primaryidentifier.toString();
+        }
+
+        public String getPrimaryIdentifier() {
+            return primaryIdentifier;
         }
 
         public String getIdentifier() {
