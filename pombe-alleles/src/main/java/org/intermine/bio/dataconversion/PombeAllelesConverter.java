@@ -35,7 +35,7 @@ public class PombeAllelesConverter extends BioFileConverter
     private String datasource, dataset, licence;
     private String datasetRefId = null;
     private static final String DATASET_TITLE = "Pombemine phenotypes data set";
-    private static final String DATA_SOURCE_NAME = "POMBE";
+    private static final String DATA_SOURCE_NAME = "PomBase";
     private static final Logger LOG = Logger.getLogger(PombeAllelesConverter.class);
     private Map<String, String> genes;
     private Map<String, Integer> storedGenesIds;
@@ -47,6 +47,7 @@ public class PombeAllelesConverter extends BioFileConverter
     protected Map<String, String> phenotypeTerms = new LinkedHashMap<String, String>();
     protected Map<String, String> pecoTerms = new LinkedHashMap<String, String>();
     private Map<String, String> evidences;
+    private Map<String, String> annotationExtensions;
 
     /**
      * Constructor
@@ -86,16 +87,15 @@ public class PombeAllelesConverter extends BioFileConverter
         datasetRefId = setDefaultDataset();
 
         BufferedReader br = new BufferedReader(reader);
-        String line = null;
-        int counter = 0;
+        String line;
         // loop through entire file
-        while ((line = br.readLine()) != null && counter <10) {
+        while ((line = br.readLine()) != null) {
             if (isHeader(line)) {
                 continue;
             }
             String[] array = line.split("\t", -1); // keep trailing empty Strings
             String geneIdentifier = array[1];
-            String fypoId = array[2];
+            String phenotypeTermId = array[2];
             String geneSymbol = array[8];
             String evidence = array[12];
             String condition = array[13];
@@ -105,22 +105,20 @@ public class PombeAllelesConverter extends BioFileConverter
             String pubMedId = array[17];
 
             if (geneIdentifier != null) {
-                // null if no pub found
                 String geneRefId = storeGene(geneIdentifier, geneSymbol);
                 Allele allele = new Allele(line, geneRefId);
-                String alleleIdentifier = storeAllele(allele);
-                String pubMedIdentifier = storePublication(pubMedId);
-                String phenotypeTermIdentifier = storePhenotypeTerm(fypoId);
-                String severityTermIdentifier = storePhenotypeTerm(severity);
-                List<String> conditionsTermIdentifiers = storePECOTerms(condition);
-                String evidenceIdentifier = storeEvidence(pubMedIdentifier, evidence);
+                String alleleRefId = storeAllele(allele);
+                String pubMedRefId = storePublication(pubMedId);
+                String phenotypeTermRefId = storePhenotypeTerm(phenotypeTermId);
+                String severityTermRefId = storePhenotypeTerm(severity);
+                List<String> conditionsTermRefIds = storePECOTerms(condition);
+                String evidenceRefId = storeEvidence(pubMedRefId, evidence);
                 String annotationRefId = storeAnnotationExtension(extension);
-                storePhenotypeAnnotation(alleleIdentifier, phenotypeTermIdentifier, evidenceIdentifier,
-                        annotationRefId, penetrance, severityTermIdentifier,conditionsTermIdentifiers);
+                storePhenotypeAnnotation(alleleRefId, phenotypeTermRefId, evidenceRefId,
+                        annotationRefId, penetrance, severityTermRefId, conditionsTermRefIds);
             }
             storeGeneAlleles();
             storeAlleleAnnotations();
-            counter++;
         }
     }
 
@@ -136,6 +134,7 @@ public class PombeAllelesConverter extends BioFileConverter
         geneAllelesRefIds = new LinkedHashMap<>();
         alleleAnnotationsRefId = new LinkedHashMap<>();
         evidences = new LinkedHashMap<>();
+        annotationExtensions = new LinkedHashMap<>();
     }
 
     private String setDefaultDataset() throws ObjectStoreException {
@@ -182,7 +181,8 @@ public class PombeAllelesConverter extends BioFileConverter
     }
 
     private String storeEvidence(String pubMedIdentifier, String evidence) throws ObjectStoreException {
-        String evidenceRefId = evidences.get(pubMedIdentifier+evidence);
+        String evidenceKey = pubMedIdentifier.concat(evidence);
+        String evidenceRefId = evidences.get(evidenceKey);
         if (evidenceRefId == null) {
             Item evidenceItem = createItem("OntologyEvidence");
             List<String> publication = new ArrayList<String>();
@@ -191,68 +191,67 @@ public class PombeAllelesConverter extends BioFileConverter
             evidenceItem.setCollection("publications", publication);
             store(evidenceItem);
             evidenceRefId = evidenceItem.getIdentifier();
-            evidences.put(pubMedIdentifier+evidence, evidenceRefId);
+            evidences.put(evidenceKey, evidenceRefId);
         }
         return evidenceRefId;
     }
 
     private String storeAnnotationExtension(String annotationExtensionDesc) throws ObjectStoreException {
-        if (StringUtils.isNotEmpty(annotationExtensionDesc)) {
-            Item annotationExtension = createItem("AnnotationExtension");
-            annotationExtension.setAttribute("description", annotationExtensionDesc);
-            store(annotationExtension);
-            return annotationExtension.getIdentifier();
+        String annotationExtensionRefId = annotationExtensions.get(annotationExtensionDesc);
+        if (annotationExtensionRefId == null) {
+            if (StringUtils.isNotEmpty(annotationExtensionDesc)) {
+                Item annotationExtension = createItem("AnnotationExtension");
+                annotationExtension.setAttribute("description", annotationExtensionDesc);
+                store(annotationExtension);
+                annotationExtensionRefId = annotationExtension.getIdentifier();
+                annotationExtensions.put(annotationExtensionDesc, annotationExtensionRefId);
+            }
         }
-        return null;
+        return annotationExtensionRefId;
     }
 
-    private Integer storePhenotypeAnnotation(String alleleIdentifier,
-            String phenotypeTermIdentifier, String evidenceIdentifier, String annotationIdentifier,
-            String penetrance, String severityTermIdentifier, List<String> conditionsTermIdentifiers)
+    private void storePhenotypeAnnotation(String alleleRefId,
+            String phenotypeTermRefId, String evidenceRefId, String annotationRefId,
+            String penetrance, String severityTermRefId, List<String> conditionsTermRefIds)
             throws ObjectStoreException {
         Item phenotypeAnnotation = createItem("PhenotypeAnnotation");
-        if (alleleIdentifier != null) {
-            phenotypeAnnotation.setReference("allele", alleleIdentifier);
-            phenotypeAnnotation.setReference("subject", alleleIdentifier);
+        if (alleleRefId != null) {
+            phenotypeAnnotation.setReference("allele", alleleRefId);
+            phenotypeAnnotation.setReference("subject", alleleRefId);
         }
         phenotypeAnnotation.addToCollection("dataSets", datasetRefId);
-        if(!StringUtils.isEmpty(phenotypeTermIdentifier)) {
-            phenotypeAnnotation.setReference("ontologyTerm", phenotypeTermIdentifier);
+        if(!StringUtils.isEmpty(phenotypeTermRefId)) {
+            phenotypeAnnotation.setReference("ontologyTerm", phenotypeTermRefId);
         }
         phenotypeAnnotation.setAttributeIfNotNull("penetrance", penetrance);
-        if(!StringUtils.isEmpty(severityTermIdentifier)) {
-            phenotypeAnnotation.setReference("severity", severityTermIdentifier);
+        if(!StringUtils.isEmpty(severityTermRefId)) {
+            phenotypeAnnotation.setReference("severity", severityTermRefId);
         }
-        if(!StringUtils.isEmpty(annotationIdentifier)) {
-            phenotypeAnnotation.setReference("annotationExtension", annotationIdentifier);
+        if(!StringUtils.isEmpty(annotationRefId)) {
+            phenotypeAnnotation.setReference("annotationExtension", annotationRefId);
         }
-        if(!conditionsTermIdentifiers.isEmpty()) {
-            phenotypeAnnotation.setCollection("conditions", conditionsTermIdentifiers);
+        if(!conditionsTermRefIds.isEmpty()) {
+            phenotypeAnnotation.setCollection("conditions", conditionsTermRefIds);
         }
-        if(!evidenceIdentifier.isEmpty()) {
+        if(!evidenceRefId.isEmpty()) {
             List<String> evidence = new ArrayList<>();
-            evidence.add(evidenceIdentifier);
+            evidence.add(evidenceRefId);
             phenotypeAnnotation.setCollection("evidence", evidence);
         }
 
-        Integer id = store(phenotypeAnnotation);
-        List<String> annotationsRefIds = alleleAnnotationsRefId.get(alleleIdentifier);
+        store(phenotypeAnnotation);
+        List<String> annotationsRefIds = alleleAnnotationsRefId.get(alleleRefId);
         if (annotationsRefIds == null) {
             annotationsRefIds = new ArrayList<>();
-            alleleAnnotationsRefId.put(alleleIdentifier, annotationsRefIds);
+            alleleAnnotationsRefId.put(alleleRefId, annotationsRefIds);
         }
         annotationsRefIds.add(phenotypeAnnotation.getIdentifier());
-
-
-
-        return id;
     }
 
     private String storePhenotypeTerm(String identifier) throws ObjectStoreException {
         if (StringUtils.isEmpty(identifier)) {
             return null;
         }
-
         String phenotypeTermIdentifier = phenotypeTerms.get(identifier);
         if (phenotypeTermIdentifier == null) {
             Item item = createItem("PhenotypeTerm");
