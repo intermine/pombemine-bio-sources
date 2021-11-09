@@ -114,8 +114,9 @@ public class PombeAllelesConverter extends BioFileConverter
                 String severityTermIdentifier = storePhenotypeTerm(severity);
                 List<String> conditionsTermIdentifiers = storePECOTerms(condition);
                 String evidenceIdentifier = storeEvidence(pubMedIdentifier, evidence);
+                String annotationRefId = storeAnnotationExtension(extension);
                 storePhenotypeAnnotation(alleleIdentifier, phenotypeTermIdentifier, evidenceIdentifier,
-                        penetrance, severityTermIdentifier,conditionsTermIdentifiers);
+                        annotationRefId, penetrance, severityTermIdentifier,conditionsTermIdentifiers);
             }
             storeGeneAlleles();
             storeAlleleAnnotations();
@@ -195,9 +196,19 @@ public class PombeAllelesConverter extends BioFileConverter
         return evidenceRefId;
     }
 
+    private String storeAnnotationExtension(String annotationExtensionDesc) throws ObjectStoreException {
+        if (StringUtils.isNotEmpty(annotationExtensionDesc)) {
+            Item annotationExtension = createItem("AnnotationExtension");
+            annotationExtension.setAttribute("description", annotationExtensionDesc);
+            store(annotationExtension);
+            return annotationExtension.getIdentifier();
+        }
+        return null;
+    }
+
     private Integer storePhenotypeAnnotation(String alleleIdentifier,
-            String phenotypeTermIdentifier, String evidenceIdentifier, String penetrance,
-            String severityTermIdentifier, List<String> conditionsTermIdentifiers)
+            String phenotypeTermIdentifier, String evidenceIdentifier, String annotationIdentifier,
+            String penetrance, String severityTermIdentifier, List<String> conditionsTermIdentifiers)
             throws ObjectStoreException {
         Item phenotypeAnnotation = createItem("PhenotypeAnnotation");
         if (alleleIdentifier != null) {
@@ -211,6 +222,9 @@ public class PombeAllelesConverter extends BioFileConverter
         phenotypeAnnotation.setAttributeIfNotNull("penetrance", penetrance);
         if(!StringUtils.isEmpty(severityTermIdentifier)) {
             phenotypeAnnotation.setReference("severity", severityTermIdentifier);
+        }
+        if(!StringUtils.isEmpty(annotationIdentifier)) {
+            phenotypeAnnotation.setReference("annotationExtension", annotationIdentifier);
         }
         if(!conditionsTermIdentifiers.isEmpty()) {
             phenotypeAnnotation.setCollection("conditions", conditionsTermIdentifiers);
@@ -278,8 +292,9 @@ public class PombeAllelesConverter extends BioFileConverter
         Allele alleleStored = alleles.get(allele.symbol);
         if (alleleStored == null) {
             Item alleleItem = createItem("Allele");
-            alleleItem.setAttributeIfNotNull("primaryIdentifier", allele.symbol);
+            alleleItem.setAttributeIfNotNull("primaryIdentifier", allele.getPrimaryIdentifier());
             alleleItem.setAttributeIfNotNull("symbol", allele.symbol);
+            alleleItem.setAttributeIfNotNull("description", allele.description);
             alleleItem.setAttributeIfNotNull("type", allele.type);
             alleleItem.setAttributeIfNotNull("expression", allele.expression);
             Reference gene = new Reference("gene", allele.geneRefId);
@@ -327,6 +342,7 @@ public class PombeAllelesConverter extends BioFileConverter
     private class Allele
     {
         String symbol;
+        String description;
         String type;
         String expression;
         String geneRefId;
@@ -340,10 +356,22 @@ public class PombeAllelesConverter extends BioFileConverter
 
         public Allele(String line, String geneRefId) {
             String[] array = line.split("\t", -1); // keep trailing empty Strings
+            this.description = array[3];
             this.expression = array[4];
             this.symbol = array[9];
             this.type = array[11];
             this.geneRefId = geneRefId;
+        }
+
+        public String getPrimaryIdentifier() {
+            StringBuilder primaryidentifier = new StringBuilder();
+            if (!StringUtils.isEmpty(symbol)) {
+                primaryidentifier.append(symbol);
+            }
+            if (!StringUtils.isEmpty(description)) {
+                primaryidentifier.append("(").append(description).append(")");
+            }
+            return primaryidentifier.toString();
         }
 
         public String getIdentifier() {
