@@ -17,16 +17,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.intermine.dataconversion.ItemWriter;
@@ -57,18 +49,20 @@ public class PombeGoConverter extends BioFileConverter
     protected static final String EVIDENCE_CODES_FILE = "go-evidence-codes";
 
     // configuration maps
-    private Map<String, Config> configs = new HashMap<String, Config>();
-    private static final Map<String, String> WITH_TYPES = new LinkedHashMap<String, String>();
+    private Map<String, Config> configs = new HashMap<>();
+    private static final Map<String, String> WITH_TYPES = new LinkedHashMap<>();
 
     // maps retained across all files
-    protected Map<String, String> goTerms = new LinkedHashMap<String, String>();
-    private Map<String, String> evidenceCodes = new LinkedHashMap<String, String>();
-    private Map<String, String> publications = new LinkedHashMap<String, String>();
+    protected Map<String, String> goTerms = new LinkedHashMap<>();
+    private Map<String, String> evidenceCodes = new LinkedHashMap<>();
+    private Map<Evidence, String> evidences = new LinkedHashMap<>();
+    private Map<String, String> publications = new LinkedHashMap<>();
+    private Map<String, String> annotationExtensions = new LinkedHashMap<>();
     private Map<String, Item> organisms = new LinkedHashMap<String, Item>();
-    protected Map<String, String> productMap = new LinkedHashMap<String, String>();
-    private Set<String> dbRefs = new HashSet<String>();
+    protected Map<String, String> productMap = new LinkedHashMap<>();
+    private Set<String> dbRefs = new HashSet<>();
     @SuppressWarnings("unused")
-    private Map<String, String> databaseAbbreviations = new HashMap<String, String>();
+    private Map<String, String> databaseAbbreviations = new HashMap<>();
 
     private Map<Integer, List<String>> productCollectionsMap;
     private Map<String, Integer> storedProductIds;
@@ -335,30 +329,32 @@ public class PombeGoConverter extends BioFileConverter
     }
 
     private void storeEvidence(Evidence evidence) throws ObjectStoreException {
-        List<String> evidenceRefIds = new ArrayList<String>();
-        Integer goAnnotationRefId = null;
+        String evidenceRefId = evidences.get(evidence);
+        List<String> evidenceRefIds = new ArrayList<>();
 
-        Item goevidence = createItem("GOEvidence");
-        goevidence.setReference("code", evidenceCodes.get(evidence.getEvidenceCode()));
-        List<String> publicationEvidence = evidence.getPublications();
-        if (!publicationEvidence.isEmpty()) {
-            goevidence.setCollection("publications", publicationEvidence);
-        }
-
-        // with objects
-        String withText = evidence.getWithText();
-        if (!StringUtils.isEmpty(withText)) {
-            goevidence.setAttribute("withText", withText);
-            List<String> with = createWithObjects(withText, evidence.organism);
-            if (!with.isEmpty()) {
-                goevidence.addCollection(new ReferenceList("with", with));
+        if (evidenceRefId == null) {
+            Item goevidence = createItem("GOEvidence");
+            goevidence.setReference("code", evidenceCodes.get(evidence.getEvidenceCode()));
+            List<String> publicationEvidence = evidence.getPublications();
+            if (!publicationEvidence.isEmpty()) {
+                goevidence.setCollection("publications", publicationEvidence);
             }
+
+            // with objects
+            String withText = evidence.getWithText();
+            if (!StringUtils.isEmpty(withText)) {
+                goevidence.setAttribute("withText", withText);
+                List<String> with = createWithObjects(withText, evidence.organism);
+                if (!with.isEmpty()) {
+                    goevidence.addCollection(new ReferenceList("with", with));
+                }
+            }
+            store(goevidence);
+            evidenceRefId = goevidence.getIdentifier();
+            evidences.put(evidence, evidenceRefId);
         }
-
-        store(goevidence);
-        evidenceRefIds.add(goevidence.getIdentifier());
-        goAnnotationRefId = evidence.getStoredAnnotationId();
-
+        evidenceRefIds.add(evidenceRefId);
+        Integer goAnnotationRefId = evidence.getStoredAnnotationId();
         ReferenceList refIds = new ReferenceList("evidence",
                 new ArrayList<String>(evidenceRefIds));
         store(refIds, goAnnotationRefId);
@@ -672,13 +668,17 @@ public class PombeGoConverter extends BioFileConverter
     }
 
     private String createAnnotationExtension(String annotationExtensionDesc) throws ObjectStoreException {
-        if (StringUtils.isNotEmpty(annotationExtensionDesc)) {
-            Item annotationExtension = createItem("AnnotationExtension");
-            annotationExtension.setAttribute("description", annotationExtensionDesc);
-            store(annotationExtension);
-            return annotationExtension.getIdentifier();
+        String annotationExtensionRefId = annotationExtensions.get(annotationExtensionDesc);
+        if (annotationExtensionRefId == null) {
+            if (StringUtils.isNotEmpty(annotationExtensionDesc)) {
+                Item annotationExtension = createItem("AnnotationExtension");
+                annotationExtension.setAttribute("description", annotationExtensionDesc);
+                store(annotationExtension);
+                annotationExtensionRefId = annotationExtension.getIdentifier();
+                annotationExtensions.put(annotationExtensionDesc, annotationExtensionRefId);
+            }
         }
-        return null;
+        return annotationExtensionRefId;
     }
 
     private String parseTaxonId(String input) {
@@ -747,6 +747,21 @@ public class PombeGoConverter extends BioFileConverter
          */
         protected void setStoredAnnotationId(Integer storedAnnotationId) {
             this.storedAnnotationId = storedAnnotationId;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Evidence evidence = (Evidence) o;
+            return Objects.equals(publicationRefIds, evidence.publicationRefIds) &&
+                    Objects.equals(evidenceCode, evidence.evidenceCode) &&
+                    Objects.equals(withText, evidence.withText);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(publicationRefIds, evidenceCode, withText);
         }
     }
 
