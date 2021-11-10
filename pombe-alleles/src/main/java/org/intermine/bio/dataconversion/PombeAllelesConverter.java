@@ -37,17 +37,17 @@ public class PombeAllelesConverter extends BioFileConverter
     private static final String DATASET_TITLE = "Pombemine phenotypes data set";
     private static final String DATA_SOURCE_NAME = "PomBase";
     private static final Logger LOG = Logger.getLogger(PombeAllelesConverter.class);
-    private Map<String, String> genes;
+    private Map<String, String> genes = new LinkedHashMap<>();
     private Map<String, Integer> storedGenesIds;
-    private Map<String, String> publications;
+    private Map<String, String> publications = new LinkedHashMap<>();
     private Map<String, Allele> alleles;
     private Map<String, Integer> storedAllelesIds;
     private Map<String, List<String>> geneAllelesRefIds;
     private Map<String, List<String>> alleleAnnotationsRefId;
-    protected Map<String, String> phenotypeTerms = new LinkedHashMap<String, String>();
-    protected Map<String, String> pecoTerms = new LinkedHashMap<String, String>();
-    private Map<String, String> evidences;
-    private Map<String, String> annotationExtensions;
+    protected Map<String, String> phenotypeTerms = new LinkedHashMap<>();
+    protected Map<String, String> pecoTerms = new LinkedHashMap<>();
+    private Map<String, String> evidences = new LinkedHashMap<>();
+    private Map<String, String> annotationExtensions = new LinkedHashMap<>();
 
     /**
      * Constructor
@@ -126,15 +126,11 @@ public class PombeAllelesConverter extends BioFileConverter
      * Reset maps that don't need to retain their contents between files.
      */
     private void initialiseMapsForFile() {
-        genes = new LinkedHashMap<>();
-        publications = new LinkedHashMap<>();
         storedGenesIds = new LinkedHashMap<>();
         alleles = new LinkedHashMap<>();
         storedAllelesIds = new LinkedHashMap<>();
         geneAllelesRefIds = new LinkedHashMap<>();
         alleleAnnotationsRefId = new LinkedHashMap<>();
-        evidences = new LinkedHashMap<>();
-        annotationExtensions = new LinkedHashMap<>();
     }
 
     private String setDefaultDataset() throws ObjectStoreException {
