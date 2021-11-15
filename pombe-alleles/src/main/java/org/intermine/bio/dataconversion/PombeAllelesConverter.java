@@ -42,8 +42,6 @@ public class PombeAllelesConverter extends BioFileConverter
     private Map<String, String> publications = new LinkedHashMap<>();
     private Map<String, Allele> alleles;
     private Map<String, Integer> storedAllelesIds;
-    private Map<String, List<String>> geneAllelesRefIds;
-    private Map<String, List<String>> alleleAnnotationsRefId;
     protected Map<String, String> phenotypeTerms = new LinkedHashMap<>();
     protected Map<String, String> pecoTerms = new LinkedHashMap<>();
     private Map<String, String> evidences = new LinkedHashMap<>();
@@ -117,8 +115,6 @@ public class PombeAllelesConverter extends BioFileConverter
                 storePhenotypeAnnotation(alleleRefId, phenotypeTermRefId, evidenceRefId,
                         annotationRefId, penetrance, severityTermRefId, conditionsTermRefIds);
             }
-            storeGeneAlleles();
-            storeAlleleAnnotations();
         }
     }
 
@@ -129,8 +125,6 @@ public class PombeAllelesConverter extends BioFileConverter
         storedGenesIds = new LinkedHashMap<>();
         alleles = new LinkedHashMap<>();
         storedAllelesIds = new LinkedHashMap<>();
-        geneAllelesRefIds = new LinkedHashMap<>();
-        alleleAnnotationsRefId = new LinkedHashMap<>();
     }
 
     private String setDefaultDataset() throws ObjectStoreException {
@@ -236,12 +230,6 @@ public class PombeAllelesConverter extends BioFileConverter
         }
 
         store(phenotypeAnnotation);
-        List<String> annotationsRefIds = alleleAnnotationsRefId.get(alleleRefId);
-        if (annotationsRefIds == null) {
-            annotationsRefIds = new ArrayList<>();
-            alleleAnnotationsRefId.put(alleleRefId, annotationsRefIds);
-        }
-        annotationsRefIds.add(phenotypeAnnotation.getIdentifier());
     }
 
     private String storePhenotypeTerm(String identifier) throws ObjectStoreException {
@@ -301,37 +289,9 @@ public class PombeAllelesConverter extends BioFileConverter
             allele.setIdentifier(alleleRefId);
             alleles.put(allele.primaryIdentifier, allele);
 
-            List<String> allelesRefIds = geneAllelesRefIds.get(allele.geneRefId);
-            if (allelesRefIds == null) {
-                allelesRefIds = new ArrayList<>();
-                geneAllelesRefIds.put(allele.geneRefId, allelesRefIds);
-            }
-            allelesRefIds.add(alleleRefId);
-
             return alleleRefId;
         }
         return alleleStored.getIdentifier();
-    }
-
-    private void storeGeneAlleles() throws ObjectStoreException {
-        for (String geneRefId : genes.values()) {
-            List<String> allelesRefIds = geneAllelesRefIds.get(geneRefId);
-            if (allelesRefIds != null && !allelesRefIds.isEmpty()) {
-                ReferenceList alleles = new ReferenceList("alleles", allelesRefIds);
-                store(alleles, storedGenesIds.get(geneRefId));
-            }
-        }
-    }
-
-    private void storeAlleleAnnotations() throws ObjectStoreException {
-        for (Allele allele : alleles.values()) {
-            String alleleIdentifier = allele.getIdentifier();
-            List<String> phenotypeAnnotationsRefIds = alleleAnnotationsRefId.get(alleleIdentifier);
-            if (phenotypeAnnotationsRefIds != null && !phenotypeAnnotationsRefIds.isEmpty()) {
-                ReferenceList phenotypeAnnotations = new ReferenceList("phenotypeAnnotations", phenotypeAnnotationsRefIds);
-                store(phenotypeAnnotations, storedAllelesIds.get(alleleIdentifier));
-            }
-        }
     }
 
     private class Allele
