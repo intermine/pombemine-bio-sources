@@ -36,6 +36,7 @@ public class PombeOrthologueConverter extends BioFileConverter
     private static final String ORTHOLOGUE_TYPE = "orthologue";
     private String dataset;
     private String datasetRefId;
+    private Map<String, String> organismRefIds = new HashMap<>();
 
     /**
      * Constructor
@@ -93,22 +94,26 @@ public class PombeOrthologueConverter extends BioFileConverter
     }
 
     private String setDefaultDataset(String datasetName) throws ObjectStoreException {
-        if (dataset == null) {
-            dataset = datasetName;
-        }
+        dataset = datasetName;
         String datasourceRefId = getDataSource(DATA_SOURCE_NAME);
         return getDataSet(dataset, datasourceRefId, null);
     }
 
     private String storeOrganism(String taxonId) {
-        Item organism = createItem("Organism");
-        organism.setAttributeIfNotNull("taxonId", taxonId);
-        try {
-            store(organism);
-        } catch (ObjectStoreException ex) {
-            throw new RuntimeException("Error storing organism ", ex);
+        if (organismRefIds.containsKey(taxonId)) {
+            return organismRefIds.get(taxonId);
+        } else {
+            Item organism = createItem("Organism");
+            organism.setAttributeIfNotNull("taxonId", taxonId);
+            try {
+                store(organism);
+            } catch (ObjectStoreException ex) {
+                throw new RuntimeException("Error storing organism ", ex);
+            }
+            String organismRefId = organism.getIdentifier();
+            organismRefIds.put(taxonId, organismRefId);
+            return organismRefId;
         }
-        return organism.getIdentifier();
     }
 
     private boolean isHeader(String line) {
