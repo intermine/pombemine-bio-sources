@@ -44,7 +44,7 @@ public class PombeGenesConverter extends BioFileConverter
      * @param model  the Model
      */
     public PombeGenesConverter(ItemWriter writer, Model model) {
-        super(writer, model, "Pombase", "Pombase data");
+        super(writer, model, "PomBase", "PomBase data");
     }
 
     /**
