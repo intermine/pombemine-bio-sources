@@ -32,7 +32,10 @@ import java.util.*;
 public class PombeGenesConverter extends BioFileConverter
 {
     private static final Logger LOG = Logger.getLogger(PombeGenesConverter.class);
-    private String fileName = null;
+    private String dataSourceName, dataSetTitle;
+    private static final String DEFAULT_DATA_SOURCE_NAME = "PomBase";
+    private static final String DEFAULT_DATA_SET_NAME = "PomBase data set";
+    private String datasetRefId;
     private Map<String, Item> organisms = new HashMap<>();
     private Map<String, Item> chromosomes = new HashMap<>();
     private Map<String, Item> proteins = new HashMap<>();
@@ -44,7 +47,34 @@ public class PombeGenesConverter extends BioFileConverter
      * @param model  the Model
      */
     public PombeGenesConverter(ItemWriter writer, Model model) {
-        super(writer, model, "PomBase", "PomBase data");
+        super(writer, model);
+    }
+
+    /**
+     * Datasource for any bioentities created
+     * @param dataSourceName name of datasource for items created
+     */
+    public void setDataSourceName(String dataSourceName) {
+        this.dataSourceName = dataSourceName;
+    }
+
+    /**
+     * If a value is specified this title will used when a DataSet is created.
+     * @param dataSetTitle the title of the DataSets of any new features
+     */
+    public void setDataSetTitle(String dataSetTitle) {
+        this.dataSetTitle = dataSetTitle;
+    }
+
+    private void storeDefaultDataset() throws ObjectStoreException {
+        if (dataSetTitle == null) {
+            dataSetTitle = DEFAULT_DATA_SET_NAME;
+        }
+        if (dataSourceName == null) {
+            dataSourceName = DEFAULT_DATA_SOURCE_NAME;
+        }
+        String datasourceRefId = getDataSource(dataSourceName);
+        datasetRefId = getDataSet(dataSetTitle, datasourceRefId, null);
     }
 
     /**
@@ -52,15 +82,15 @@ public class PombeGenesConverter extends BioFileConverter
      */
     public void process(Reader reader) throws Exception {
         File file = getCurrentFile();
-        if (file != null) { // test is run with an internal file, file will be null
-            fileName = file.getName();
-
+        if (file != null) {
+            String fileName = file.getName();
             LOG.info("======================================");
             LOG.info("READING " + fileName);
             LOG.info("======================================");
 
             JsonNode root = new ObjectMapper().readTree(reader);
             Iterator<JsonNode> it = root.elements();
+            storeDefaultDataset();
             while (it.hasNext()) {
                 storeGene(it.next());
             }
@@ -73,6 +103,7 @@ public class PombeGenesConverter extends BioFileConverter
         gene.setAttributeIfNotNull("symbol", geneRoot.path("name").asText());
         gene.setAttributeIfNotNull("name", geneRoot.path("product").asText());
         gene.setAttributeIfNotNull("featureType", geneRoot.path("featureType").asText());
+        gene.addToCollection("dataSets", datasetRefId);
 
         //create organism
         String taxonId = geneRoot.path("taxonid").asText();
@@ -125,6 +156,7 @@ public class PombeGenesConverter extends BioFileConverter
             synonym.setAttributeIfNotNull("value", synonymNode.path("name").asText());
             synonym.setAttributeIfNotNull("type", synonymNode.path("type").asText());
             synonym.setReference("subject", bioEntity);
+            synonym.addToCollection("dataSets", datasetRefId);
             try {
                 store(synonym);
                 synonymIds.add(synonym.getIdentifier());
@@ -144,6 +176,7 @@ public class PombeGenesConverter extends BioFileConverter
             } else {
                 chromosome = createItem("Chromosome");
                 chromosome.setAttributeIfNotNull("primaryIdentifier", primaryIdentifier);
+                chromosome.addToCollection("dataSets", datasetRefId);
                 setOrganism(chromosome, organism);
                 try {
                     store(chromosome);
@@ -163,6 +196,7 @@ public class PombeGenesConverter extends BioFileConverter
             location.setAttributeIfNotNull("start", locationNode.path("start_pos").asText());
             location.setAttributeIfNotNull("end", locationNode.path("end_pos").asText());
             location.setAttributeIfNotNull("phase", locationNode.path("phase").asText());
+            location.addToCollection("dataSets", datasetRefId);
             String strandValue = locationNode.path("strand").asText();
             switch (strandValue) {
                 case "forward":
@@ -193,6 +227,7 @@ public class PombeGenesConverter extends BioFileConverter
             protein = createItem("UniProtEntry");
             protein.setAttributeIfNotNull("primaryAccession", uniprotId);
             protein.setReference("gene", gene);
+            protein.addToCollection("dataSets", datasetRefId);
             setOrganism(protein, organism);
             try {
                 store(protein);
@@ -210,6 +245,7 @@ public class PombeGenesConverter extends BioFileConverter
             Item transcript = createItem("Transcript");
             transcript.setAttributeIfNotNull("primaryIdentifier", transcriptNode.path("uniquename").asText());
             transcript.setAttributeIfNotNull("transcriptType", transcriptNode.path("transcript_type").asText());
+            transcript.addToCollection("dataSets", datasetRefId);
             setOrganism(transcript, organism);
             //set part
             storeParts(transcriptNode.path("parts"), gene, organism);
@@ -257,6 +293,7 @@ public class PombeGenesConverter extends BioFileConverter
                 }
                 if (feature != null) {
                     feature.setAttributeIfNotNull("primaryIdentifier", partNode.path("uniquename").asText());
+                    feature.addToCollection("dataSets", datasetRefId);
                     setOrganism(feature, organism);
                     //set chromosome and chromosome location
                     JsonNode location = partNode.path("location");
@@ -288,6 +325,7 @@ public class PombeGenesConverter extends BioFileConverter
             protein.setAttributeIfNotNull("primaryAccession", primaryAccession);
             protein.setAttributeIfNotNull("name", proteinNode.path("product").asText());
             protein.setAttributeIfNotNull("molecularWeight", proteinNode.path("molecular_weight").asText());
+            protein.addToCollection("dataSets", datasetRefId);
             storeSequence(proteinNode.path("sequence").asText(), protein);
             setOrganism(protein, organism);
             try {
@@ -317,6 +355,7 @@ public class PombeGenesConverter extends BioFileConverter
         Item cds = createItem("CDS");
         cds.setAttribute("primaryIdentifier", createCDSIdentifier(bioEntity));
         cds.setReference("transcript", bioEntity);
+        cds.addToCollection("dataSets", datasetRefId);
         setOrganism(cds, organism);
         Item chromosome = storeChromosome(cdsNode, cds, organism);
         storeLocation(cdsNode, cds, chromosome);
