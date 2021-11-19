@@ -34,7 +34,7 @@ public class PombeAllelesConverter extends BioFileConverter
 {
     private String datasource, dataset, licence;
     private String datasetRefId = null;
-    private static final String DATASET_TITLE = "PombeMine phenotypes data set";
+    private static final String DATASET_TITLE = "PomBase phenotypes data set";
     private static final String DATA_SOURCE_NAME = "PomBase";
     private static final Logger LOG = Logger.getLogger(PombeAllelesConverter.class);
     private Map<String, String> genes = new LinkedHashMap<>();
@@ -55,7 +55,7 @@ public class PombeAllelesConverter extends BioFileConverter
      * @throws Exception if an error occurs in storing or finding Model
      */
     public PombeAllelesConverter(ItemWriter writer, Model model) throws Exception {
-        super(writer, model, DATA_SOURCE_NAME, DATASET_TITLE);
+        super(writer, model);
     }
 
     /**
@@ -68,12 +68,19 @@ public class PombeAllelesConverter extends BioFileConverter
     }
 
     /**
-     * Set the data set for this ontology
-     *
-     * @param dataset data set for this ontology
+     * Datasource for any bioentities created
+     * @param dataSourceName name of datasource for items created
      */
-    public void setDataset(String dataset) {
-        this.dataset = dataset;
+    public void setDataSourceName(String dataSourceName) {
+        this.datasource = dataSourceName;
+    }
+
+    /**
+     * If a value is specified this title will used when a DataSet is created.
+     * @param dataSetTitle the title of the DataSets of any new features
+     */
+    public void setDataSetTitle(String dataSetTitle) {
+        this.dataset = dataSetTitle;
     }
 
     /**
@@ -82,7 +89,7 @@ public class PombeAllelesConverter extends BioFileConverter
     @Override
     public void process(Reader reader) throws ObjectStoreException, IOException {
         initialiseMapsForFile();
-        datasetRefId = setDefaultDataset();
+        setDefaultDataset();
 
         BufferedReader br = new BufferedReader(reader);
         String line;
@@ -127,12 +134,15 @@ public class PombeAllelesConverter extends BioFileConverter
         storedAllelesIds = new LinkedHashMap<>();
     }
 
-    private String setDefaultDataset() throws ObjectStoreException {
+    private void setDefaultDataset() throws ObjectStoreException {
         if (dataset == null) {
             dataset = DATASET_TITLE;
         }
+        if (datasource == null) {
+            datasource = DATA_SOURCE_NAME;
+        }
         String datasourceRefId = getDataSource(datasource);
-        return getDataSet(dataset, datasourceRefId, licence);
+        datasetRefId = getDataSet(dataset, datasourceRefId, null);
     }
 
     private boolean isHeader(String line) {
@@ -260,7 +270,6 @@ public class PombeAllelesConverter extends BioFileConverter
             if (pecoTermIdentifier == null) {
                 Item item = createItem("Condition");
                 item.setAttribute("identifier", identifier);
-                item.addToCollection("dataSets", datasetRefId);
                 store(item);
 
                 pecoTermIdentifier = item.getIdentifier();
@@ -280,6 +289,7 @@ public class PombeAllelesConverter extends BioFileConverter
             alleleItem.setAttributeIfNotNull("description", allele.description);
             alleleItem.setAttributeIfNotNull("type", allele.type);
             alleleItem.setAttributeIfNotNull("expression", allele.expression);
+            alleleItem.addToCollection("dataSets", datasetRefId);
             Reference gene = new Reference("gene", allele.geneRefId);
             Integer id = store(alleleItem);
             store(gene, id);
