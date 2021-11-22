@@ -37,6 +37,7 @@ public class PombeOrthologueConverter extends BioFileConverter
     private String dataset;
     private String datasetRefId;
     private Map<String, String> organismRefIds = new HashMap<>();
+    private Map<String, String> genes = new HashMap<String, String>();
 
     /**
      * Constructor
@@ -138,15 +139,20 @@ public class PombeOrthologueConverter extends BioFileConverter
     }
 
     private String storeGene(String primaryIdentifier, String organismRefId) {
-        Item gene = createItem("Gene");
-        gene.setAttributeIfNotNull("primaryIdentifier", primaryIdentifier);
-        gene.setReference("organism", organismRefId);
-        gene.addToCollection("dataSets", datasetRefId);
-        try {
-            store(gene);
-        } catch (ObjectStoreException ex) {
-            throw new RuntimeException("Error storing gene ", ex);
+        String refId = genes.get(primaryIdentifier);
+        if (refId == null) {
+            Item gene = createItem("Gene");
+            gene.setAttributeIfNotNull("primaryIdentifier", primaryIdentifier);
+            gene.setReference("organism", organismRefId);
+            gene.addToCollection("dataSets", datasetRefId);
+            try {
+                store(gene);
+            } catch (ObjectStoreException ex) {
+                throw new RuntimeException("Error storing gene ", ex);
+            }
+            refId = gene.getIdentifier();
+            genes.put(primaryIdentifier, refId);
         }
-        return gene.getIdentifier();
+        return refId;
     }
 }
