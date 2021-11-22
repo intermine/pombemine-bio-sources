@@ -46,6 +46,7 @@ public class PombeAllelesConverter extends BioFileConverter
     protected Map<String, String> pecoTerms = new LinkedHashMap<>();
     private Map<String, String> evidences = new LinkedHashMap<>();
     private Map<String, String> annotationExtensions = new LinkedHashMap<>();
+    private Map<String, String> organismRefIds = new HashMap<>();
 
     /**
      * Constructor
@@ -108,11 +109,13 @@ public class PombeAllelesConverter extends BioFileConverter
             String severity = array[15];
             String extension = array[16];
             String pubMedId = array[17];
+            String taxonId = array[18];
 
             if (geneIdentifier != null) {
-                String geneRefId = storeGene(geneIdentifier, geneSymbol);
+                String organismRefId = storeOrganism(taxonId);
+                String geneRefId = storeGene(geneIdentifier, geneSymbol, organismRefId);
                 Allele allele = new Allele(line, geneRefId);
-                String alleleRefId = storeAllele(allele);
+                String alleleRefId = storeAllele(allele, organismRefId);
                 String pubMedRefId = storePublication(pubMedId);
                 String phenotypeTermRefId = storePhenotypeTerm(phenotypeTermId);
                 String severityTermRefId = storePhenotypeTerm(severity);
@@ -152,11 +155,31 @@ public class PombeAllelesConverter extends BioFileConverter
         return false;
     }
 
-    private String storeGene(String primaryIdentifier, String symbol) throws ObjectStoreException {
+    private String storeOrganism(String taxonId) {
+        if (organismRefIds.containsKey(taxonId)) {
+            return organismRefIds.get(taxonId);
+        } else {
+            Item organism = createItem("Organism");
+            organism.setAttributeIfNotNull("taxonId", taxonId);
+            try {
+                store(organism);
+            } catch (ObjectStoreException ex) {
+                throw new RuntimeException("Error storing organism ", ex);
+            }
+            String organismRefId = organism.getIdentifier();
+            organismRefIds.put(taxonId, organismRefId);
+            return organismRefId;
+        }
+    }
+
+    private String storeGene(String primaryIdentifier, String symbol, String organismRefId)
+            throws ObjectStoreException {
         if (!genes.containsKey(primaryIdentifier)) {
             Item gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", primaryIdentifier);
             gene.setAttributeIfNotNull("symbol", symbol);
+            gene.setReference("organism", organismRefId);
+            gene.addToCollection("dataSets", datasetRefId);
             Integer id = store(gene);
             genes.put(primaryIdentifier, gene.getIdentifier());
             storedGenesIds.put(gene.getIdentifier(), id);
@@ -238,6 +261,7 @@ public class PombeAllelesConverter extends BioFileConverter
             evidence.add(evidenceRefId);
             phenotypeAnnotation.setCollection("evidence", evidence);
         }
+        phenotypeAnnotation.addToCollection("dataSets", datasetRefId);
 
         store(phenotypeAnnotation);
     }
@@ -280,7 +304,7 @@ public class PombeAllelesConverter extends BioFileConverter
         return pecoTermsIdentifiers;
     }
 
-    private String storeAllele(Allele allele) throws ObjectStoreException {
+    private String storeAllele(Allele allele, String organismRefId) throws ObjectStoreException {
         Allele alleleStored = alleles.get(allele.primaryIdentifier);
         if (alleleStored == null) {
             Item alleleItem = createItem("Allele");
@@ -289,6 +313,7 @@ public class PombeAllelesConverter extends BioFileConverter
             alleleItem.setAttributeIfNotNull("description", allele.description);
             alleleItem.setAttributeIfNotNull("type", allele.type);
             alleleItem.setAttributeIfNotNull("expression", allele.expression);
+            alleleItem.setReference("organism", organismRefId);
             alleleItem.addToCollection("dataSets", datasetRefId);
             Reference gene = new Reference("gene", allele.geneRefId);
             Integer id = store(alleleItem);
