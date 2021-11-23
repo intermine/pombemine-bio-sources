@@ -6,6 +6,7 @@ include ':bio-source-pombe-genes',
 ':bio-source-pombe-alleles',
 ':bio-source-fypo',
 ':bio-source-peco',
+':bio-source-eco',
 ':bio-source-pombe-orthologue'
 
 project(':bio-source-pombe-genes').projectDir = new File(settingsDir, './pombe-genes')
@@ -14,5 +15,6 @@ project(':bio-source-pombe-go-annotation').projectDir = new File(settingsDir, '.
 project(':bio-source-pombe-alleles').projectDir = new File(settingsDir, './pombe-alleles')
 project(':bio-source-fypo').projectDir = new File(settingsDir, './fypo')
 project(':bio-source-peco').projectDir = new File(settingsDir, './peco')
+project(':bio-source-eco').projectDir = new File(settingsDir, './eco')
 project(':bio-source-pombe-orthologue').projectDir = new File(settingsDir, './pombe-orthologue')
 
