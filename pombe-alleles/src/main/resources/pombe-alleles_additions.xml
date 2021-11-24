@@ -24,15 +24,12 @@
   </class>
 
   <class name="OntologyEvidence" is-interface="true">
-    <attribute name="description" type="java.lang.String"/>
+    <reference name="evidence" referenced-type="ECOTerm"/>
     <collection name="publications" referenced-type="Publication"/>
   </class>
 
+  <class name="Condition" extends="PECOTerm" is-interface="true"/>
   <class name="PhenotypeTerm" extends="OntologyTerm" is-interface="true"/>
-
-  <class name="Condition" extends="PECOTerm" is-interface="true">
-  </class>
-
-  <class name="PECOTerm" extends="OntologyTerm" is-interface="true">
-  </class>
+  <class name="ECOTerm" extends="OntologyTerm" is-interface="true"/>
+  <class name="PECOTerm" extends="OntologyTerm" is-interface="true"/>
 </classes>

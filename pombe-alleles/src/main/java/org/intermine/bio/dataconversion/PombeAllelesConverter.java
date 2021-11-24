@@ -43,6 +43,7 @@ public class PombeAllelesConverter extends BioFileConverter
     private Map<String, Allele> alleles;
     private Map<String, Integer> storedAllelesIds;
     protected Map<String, String> phenotypeTerms = new LinkedHashMap<>();
+    protected Map<String, String> ecoTerms = new LinkedHashMap<>();
     protected Map<String, String> pecoTerms = new LinkedHashMap<>();
     private Map<String, String> evidences = new LinkedHashMap<>();
     private Map<String, String> annotationExtensions = new LinkedHashMap<>();
@@ -210,13 +211,29 @@ public class PombeAllelesConverter extends BioFileConverter
             Item evidenceItem = createItem("OntologyEvidence");
             List<String> publication = new ArrayList<String>();
             publication.add(pubMedIdentifier);
-            evidenceItem.setAttributeIfNotNull("description", evidence);
+            if (!StringUtils.isEmpty(evidence)) {
+                evidenceItem.setReference("evidence", storeEvidenceEcoTerm(evidence));
+            }
+            //evidenceItem.setAttributeIfNotNull("description", evidence);
             evidenceItem.setCollection("publications", publication);
             store(evidenceItem);
             evidenceRefId = evidenceItem.getIdentifier();
             evidences.put(evidenceKey, evidenceRefId);
         }
         return evidenceRefId;
+    }
+
+    private String storeEvidenceEcoTerm(String evidence) throws ObjectStoreException {
+        String ecoTermIdentifier = ecoTerms.get(evidence);
+        if (ecoTermIdentifier == null) {
+            Item item = createItem("ECOTerm");
+            item.setAttribute("identifier", evidence);
+            item.addToCollection("dataSets", datasetRefId);
+            store(item);
+            ecoTermIdentifier = item.getIdentifier();
+            ecoTerms.put(evidence, ecoTermIdentifier);
+        }
+        return ecoTermIdentifier;
     }
 
     private String storeAnnotationExtension(String annotationExtensionDesc) throws ObjectStoreException {
