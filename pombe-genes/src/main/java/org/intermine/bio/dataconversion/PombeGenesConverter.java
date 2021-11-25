@@ -175,7 +175,8 @@ public class PombeGenesConverter extends BioFileConverter
                 chromosome = chromosomes.get(primaryIdentifier);
             } else {
                 chromosome = createItem("Chromosome");
-                chromosome.setAttributeIfNotNull("primaryIdentifier", primaryIdentifier);
+                chromosome.setAttributeIfNotNull("primaryIdentifier",
+                        generateChromosomeIdentifier(primaryIdentifier));
                 chromosome.addToCollection("dataSets", datasetRefId);
                 setOrganism(chromosome, organism);
                 try {
@@ -188,6 +189,20 @@ public class PombeGenesConverter extends BioFileConverter
             bioEntity.setReference("chromosome", chromosome);
         }
         return chromosome;
+    }
+
+    private String generateChromosomeIdentifier(String primaryIdentifier) {
+        if (!primaryIdentifier.startsWith("chromosome_")) {
+            return primaryIdentifier;
+        } else if (primaryIdentifier.equalsIgnoreCase("chromosome_1")) {
+            return "I";
+        } else if (primaryIdentifier.equalsIgnoreCase("chromosome_2")) {
+            return "II";
+        } else if (primaryIdentifier.equalsIgnoreCase("chromosome_3")) {
+            return "III";
+        } else {
+            return primaryIdentifier;
+        }
     }
 
     private void storeLocation(JsonNode locationNode, Item bioEntity, Item chromosome) {
