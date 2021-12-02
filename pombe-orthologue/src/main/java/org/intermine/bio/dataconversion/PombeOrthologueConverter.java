@@ -38,6 +38,7 @@ public class PombeOrthologueConverter extends BioFileConverter
     private String datasetRefId;
     private Map<String, String> organismRefIds = new HashMap<>();
     private Map<String, String> genes = new HashMap<String, String>();
+    private static final String LICENCE = "http://creativecommons.org/licenses/by/4.0/";
 
     /**
      * Constructor
@@ -97,7 +98,7 @@ public class PombeOrthologueConverter extends BioFileConverter
     private String setDefaultDataset(String datasetName) throws ObjectStoreException {
         dataset = datasetName;
         String datasourceRefId = getDataSource(DATA_SOURCE_NAME);
-        return getDataSet(dataset, datasourceRefId, null);
+        return getDataSet(dataset, datasourceRefId, LICENCE);
     }
 
     private String storeOrganism(String taxonId) {

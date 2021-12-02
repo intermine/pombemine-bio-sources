@@ -36,7 +36,6 @@ public class PombeAllelesConverter extends BioFileConverter
     private String datasetRefId = null;
     private static final String DATASET_TITLE = "PomBase phenotypes data set";
     private static final String DATA_SOURCE_NAME = "PomBase";
-    private static final Logger LOG = Logger.getLogger(PombeAllelesConverter.class);
     private Map<String, String> genes = new LinkedHashMap<>();
     private Map<String, Integer> storedGenesIds;
     private Map<String, String> publications = new LinkedHashMap<>();
@@ -48,6 +47,7 @@ public class PombeAllelesConverter extends BioFileConverter
     private Map<String, String> evidences = new LinkedHashMap<>();
     private Map<String, String> annotationExtensions = new LinkedHashMap<>();
     private Map<String, String> organismRefIds = new HashMap<>();
+    private static final String LICENCE = "http://creativecommons.org/licenses/by/4.0/";
 
     /**
      * Constructor
@@ -145,8 +145,11 @@ public class PombeAllelesConverter extends BioFileConverter
         if (datasource == null) {
             datasource = DATA_SOURCE_NAME;
         }
+        if (licence == null) {
+            licence = LICENCE;
+        }
         String datasourceRefId = getDataSource(datasource);
-        datasetRefId = getDataSet(dataset, datasourceRefId, null);
+        datasetRefId = getDataSet(dataset, datasourceRefId, licence);
     }
 
     private boolean isHeader(String line) {

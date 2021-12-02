@@ -32,13 +32,14 @@ import java.util.*;
 public class PombeGenesConverter extends BioFileConverter
 {
     private static final Logger LOG = Logger.getLogger(PombeGenesConverter.class);
-    private String dataSourceName, dataSetTitle;
+    private String licence, dataSourceName, dataSetTitle;
     private static final String DEFAULT_DATA_SOURCE_NAME = "PomBase";
     private static final String DEFAULT_DATA_SET_NAME = "PomBase data set";
     private String datasetRefId;
     private Map<String, Item> organisms = new HashMap<>();
     private Map<String, Item> chromosomes = new HashMap<>();
     private Map<String, Item> proteins = new HashMap<>();
+    private static final String LICENCE = "http://creativecommons.org/licenses/by/4.0/";
 
     /**
      * Constructor
@@ -66,6 +67,15 @@ public class PombeGenesConverter extends BioFileConverter
         this.dataSetTitle = dataSetTitle;
     }
 
+    /**
+     * Set the licence, a URL to the licence for this ontology
+     *
+     * @param licence licence for these data. Expects a URL
+     */
+    public void setLicence(String licence) {
+        this.licence = licence;
+    }
+
     private void storeDefaultDataset() throws ObjectStoreException {
         if (dataSetTitle == null) {
             dataSetTitle = DEFAULT_DATA_SET_NAME;
@@ -73,8 +83,11 @@ public class PombeGenesConverter extends BioFileConverter
         if (dataSourceName == null) {
             dataSourceName = DEFAULT_DATA_SOURCE_NAME;
         }
+        if (licence == null) {
+            licence= LICENCE;
+        }
         String datasourceRefId = getDataSource(dataSourceName);
-        datasetRefId = getDataSet(dataSetTitle, datasourceRefId, null);
+        datasetRefId = getDataSet(dataSetTitle, datasourceRefId, licence);
     }
 
     /**
