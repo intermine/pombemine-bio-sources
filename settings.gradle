@@ -5,14 +5,18 @@ include ':bio-source-pombe-genes',
 ':bio-source-pombe-go-annotation',
 ':bio-source-pombe-alleles',
 ':bio-source-fypo',
+':bio-source-mondo',
 ':bio-source-peco',
-':bio-source-pombe-orthologue'
+':bio-source-pombe-orthologue',
+':bio-source-pombe-diseases'
 
 project(':bio-source-pombe-genes').projectDir = new File(settingsDir, './pombe-genes')
 project(':bio-source-pombe-uniprot').projectDir = new File(settingsDir, './pombe-uniprot')
 project(':bio-source-pombe-go-annotation').projectDir = new File(settingsDir, './pombe-go-annotation')
 project(':bio-source-pombe-alleles').projectDir = new File(settingsDir, './pombe-alleles')
 project(':bio-source-fypo').projectDir = new File(settingsDir, './fypo')
+project(':bio-source-mondo').projectDir = new File(settingsDir, './mondo')
 project(':bio-source-peco').projectDir = new File(settingsDir, './peco')
 project(':bio-source-pombe-orthologue').projectDir = new File(settingsDir, './pombe-orthologue')
+project(':bio-source-pombe-diseases').projectDir = new File(settingsDir, './pombe-diseases')
 
