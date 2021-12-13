@@ -37,7 +37,7 @@ public class PombeDiseasesConverter extends BioFileConverter
     private static final String DATASET_TITLE = "PomBase disease data set";
     private static final String DATA_SOURCE_NAME = "PomBase";
     private static final String LICENCE = "http://creativecommons.org/licenses/by/4.0/";
-    private Map<String, Integer> diseases = new LinkedHashMap<>();
+    private Map<Disease, Integer> diseases = new LinkedHashMap<>();
     private Map<String, String> mondoTerms = new LinkedHashMap<>();
     private Map<String, String> publications = new LinkedHashMap<>();
     private Map<String, String> genes = new LinkedHashMap<>();
@@ -103,14 +103,13 @@ public class PombeDiseasesConverter extends BioFileConverter
             String pubMedId = array[3];
 
             if (geneIdentifier != null) {
-                storeMondoTerm(mondoTermId);
-                int diseaseId = storeDisease(mondoTermId);
-                storeGene(geneIdentifier, geneSymbol, diseaseId);
-                storePublication(pubMedId, diseaseId);
+                Disease disease = new Disease(mondoTermId, pubMedId);
+                storeDisease(disease);
+                storeGene(geneIdentifier, geneSymbol, disease);
+
             }
         }
         storeDiseaseGenes();
-        storeDiseasePublications();
     }
 
     private void setDefaultDataset() throws ObjectStoreException {
@@ -138,52 +137,18 @@ public class PombeDiseasesConverter extends BioFileConverter
         if (StringUtils.isEmpty(identifier)) {
             return;
         }
-        String mondoTermIdentifier = mondoTerms.get(identifier);
-        if (mondoTermIdentifier == null) {
+        String mondoTermRefId = mondoTerms.get(identifier);
+        if (mondoTermRefId == null) {
             Item item = createItem("MondoTerm");
             item.setAttribute("identifier", identifier);
             item.addToCollection("dataSets", datasetRefId);
             store(item);
-            mondoTermIdentifier = item.getIdentifier();
-            mondoTerms.put(identifier, mondoTermIdentifier);
+            mondoTermRefId = item.getIdentifier();
+            mondoTerms.put(identifier, mondoTermRefId);
         }
     }
 
-    private Integer storeDisease(String mondoTermId) throws ObjectStoreException {
-        String mondoTermRefId = mondoTerms.get(mondoTermId);
-        if (!diseases.containsKey(mondoTermRefId)) {
-            Item disease = createItem("Disease");
-            disease.setReference("mondoTerm", mondoTermRefId);
-            disease.addToCollection("dataSets", datasetRefId);
-            Integer id = store(disease);
-            diseases.put(mondoTermRefId, id);
-        }
-        return diseases.get(mondoTermRefId);
-    }
-
-    private void storeGene(String primaryIdentifier, String symbol, int diseaseId)
-            throws ObjectStoreException {
-        String geneRefId = genes.get(primaryIdentifier);
-        if (geneRefId == null) {
-            Item gene = createItem("Gene");
-            gene.setAttribute("primaryIdentifier", primaryIdentifier);
-            gene.setAttributeIfNotNull("symbol", symbol);
-            gene.addToCollection("dataSets", datasetRefId);
-            store(gene);
-            geneRefId = gene.getIdentifier();
-            genes.put(primaryIdentifier, geneRefId);
-        }
-
-        if (!diseaseGenesMap.containsKey(diseaseId)) {
-            List<String> genes = new ArrayList<>();
-            genes.add(geneRefId);
-            diseaseGenesMap.put(diseaseId, genes);
-        } else {
-            diseaseGenesMap.get(diseaseId).add(geneRefId);
-        }
-    }
-
-    private void storePublication(String pubMedId, int diseaseId) throws ObjectStoreException {
+    private void storePublication(String pubMedId) throws ObjectStoreException {
         if (StringUtils.isEmpty(pubMedId) || !pubMedId.contains("PMID:")) {
             return;
         }
@@ -195,13 +160,55 @@ public class PombeDiseasesConverter extends BioFileConverter
             publicationRefId = item.getIdentifier();
             publications.put(pubMedId, publicationRefId);
         }
-
-        if (!diseasePublicationsMap.containsKey(diseaseId)) {
+/*        if (!diseasePublicationsMap.containsKey(diseaseId)) {
             List<String> publications = new ArrayList<>();
             publications.add(publicationRefId);
             diseasePublicationsMap.put(diseaseId, publications);
         } else {
             diseasePublicationsMap.get(diseaseId).add(publicationRefId);
+        }*/
+    }
+
+    private void storeDisease(Disease disease) throws ObjectStoreException {
+        storeMondoTerm(disease.mondoTermId);
+        storePublication(disease.pubMedId);
+        if (!diseases.containsKey(disease)) {
+            Item item = createItem("Disease");
+            String mondoTermRefId = mondoTerms.get(disease.mondoTermId);
+            item.setReference("mondoTerm", mondoTermRefId);
+            item.addToCollection("dataSets", datasetRefId);
+
+            String pubRefId = publications.get(disease.pubMedId);
+            if (pubRefId != null) {
+                List<String> publication = new ArrayList<String>();
+                publication.add(pubRefId);
+                item.setCollection("publications", publication);
+            }
+
+            Integer id = store(item);
+            diseases.put(disease, id);
+        }
+    }
+
+    private void storeGene(String primaryIdentifier, String symbol, Disease disease)
+            throws ObjectStoreException {
+        String geneRefId = genes.get(primaryIdentifier);
+        if (geneRefId == null) {
+            Item gene = createItem("Gene");
+            gene.setAttribute("primaryIdentifier", primaryIdentifier);
+            gene.setAttributeIfNotNull("symbol", symbol);
+            gene.addToCollection("dataSets", datasetRefId);
+            store(gene);
+            geneRefId = gene.getIdentifier();
+            genes.put(primaryIdentifier, geneRefId);
+        }
+        Integer diseaseId = diseases.get(disease);
+        if (!diseaseGenesMap.containsKey(diseaseId)) {
+            List<String> genes = new ArrayList<>();
+            genes.add(geneRefId);
+            diseaseGenesMap.put(diseaseId, genes);
+        } else {
+            diseaseGenesMap.get(diseaseId).add(geneRefId);
         }
     }
 
@@ -220,6 +227,30 @@ public class PombeDiseasesConverter extends BioFileConverter
             List<String> publicationsRefIds = entry.getValue();
             ReferenceList publications = new ReferenceList("publications", publicationsRefIds);
             store(publications, diseaseId);
+        }
+    }
+
+    class Disease {
+        String mondoTermId;
+        String pubMedId;
+
+        public Disease(String mondoTermId, String pubMedId) {
+            this.mondoTermId = mondoTermId;
+            this.pubMedId = pubMedId;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Disease disease = (Disease) o;
+            return Objects.equals(mondoTermId, disease.mondoTermId) &&
+                    Objects.equals(pubMedId, disease.pubMedId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(mondoTermId, pubMedId);
         }
     }
 }
