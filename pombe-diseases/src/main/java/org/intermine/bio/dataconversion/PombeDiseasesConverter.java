@@ -155,18 +155,11 @@ public class PombeDiseasesConverter extends BioFileConverter
         String publicationRefId = publications.get(pubMedId);
         if (publicationRefId == null) {
             Item item = createItem("Publication");
-            item.setAttribute("pubMedId", pubMedId);
+            item.setAttribute("pubMedId", pubMedId.substring(5));
             store(item);
             publicationRefId = item.getIdentifier();
             publications.put(pubMedId, publicationRefId);
         }
-/*        if (!diseasePublicationsMap.containsKey(diseaseId)) {
-            List<String> publications = new ArrayList<>();
-            publications.add(publicationRefId);
-            diseasePublicationsMap.put(diseaseId, publications);
-        } else {
-            diseasePublicationsMap.get(diseaseId).add(publicationRefId);
-        }*/
     }
 
     private void storeDisease(Disease disease) throws ObjectStoreException {
