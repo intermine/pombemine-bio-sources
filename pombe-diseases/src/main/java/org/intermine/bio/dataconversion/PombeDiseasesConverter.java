@@ -133,6 +133,27 @@ public class PombeDiseasesConverter extends BioFileConverter
         return false;
     }
 
+    private void storeDisease(Disease disease) throws ObjectStoreException {
+        storeMondoTerm(disease.mondoTermId);
+        storePublication(disease.pubMedId);
+        if (!diseases.containsKey(disease)) {
+            Item item = createItem("Disease");
+            String mondoTermRefId = mondoTerms.get(disease.mondoTermId);
+            item.setReference("mondoTerm", mondoTermRefId);
+            item.addToCollection("dataSets", datasetRefId);
+
+            String pubRefId = publications.get(disease.pubMedId);
+            if (pubRefId != null) {
+                List<String> publication = new ArrayList<String>();
+                publication.add(pubRefId);
+                item.setCollection("publications", publication);
+            }
+
+            Integer id = store(item);
+            diseases.put(disease, id);
+        }
+    }
+
     private void storeMondoTerm(String identifier) throws ObjectStoreException {
         if (StringUtils.isEmpty(identifier)) {
             return;
@@ -159,27 +180,6 @@ public class PombeDiseasesConverter extends BioFileConverter
             store(item);
             publicationRefId = item.getIdentifier();
             publications.put(pubMedId, publicationRefId);
-        }
-    }
-
-    private void storeDisease(Disease disease) throws ObjectStoreException {
-        storeMondoTerm(disease.mondoTermId);
-        storePublication(disease.pubMedId);
-        if (!diseases.containsKey(disease)) {
-            Item item = createItem("Disease");
-            String mondoTermRefId = mondoTerms.get(disease.mondoTermId);
-            item.setReference("mondoTerm", mondoTermRefId);
-            item.addToCollection("dataSets", datasetRefId);
-
-            String pubRefId = publications.get(disease.pubMedId);
-            if (pubRefId != null) {
-                List<String> publication = new ArrayList<String>();
-                publication.add(pubRefId);
-                item.setCollection("publications", publication);
-            }
-
-            Integer id = store(item);
-            diseases.put(disease, id);
         }
     }
 
@@ -211,15 +211,6 @@ public class PombeDiseasesConverter extends BioFileConverter
             List<String> genesRefIds = entry.getValue();
             ReferenceList genes = new ReferenceList("genes", genesRefIds);
             store(genes, diseaseId);
-        }
-    }
-
-    private void storeDiseasePublications() throws ObjectStoreException {
-        for (Map.Entry<Integer, List<String>> entry : diseasePublicationsMap.entrySet()) {
-            Integer diseaseId = entry.getKey();
-            List<String> publicationsRefIds = entry.getValue();
-            ReferenceList publications = new ReferenceList("publications", publicationsRefIds);
-            store(publications, diseaseId);
         }
     }
 
