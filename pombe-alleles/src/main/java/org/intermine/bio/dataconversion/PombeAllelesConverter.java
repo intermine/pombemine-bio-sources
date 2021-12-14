@@ -33,10 +33,8 @@ public class PombeAllelesConverter extends BioFileConverter
     private static final String DATASET_TITLE = "PomBase phenotypes data set";
     private static final String DATA_SOURCE_NAME = "PomBase";
     private Map<String, String> genes = new LinkedHashMap<>();
-    private Map<String, Integer> storedGenesIds;
     private Map<String, String> publications = new LinkedHashMap<>();
-    private Map<String, Allele> alleles;
-    private Map<String, Integer> storedAllelesIds;
+    private Map<String, Allele> alleles = new LinkedHashMap<>();
     protected Map<String, String> phenotypeTerms = new LinkedHashMap<>();
     protected Map<String, String> ecoTerms = new LinkedHashMap<>();
     protected Map<String, String> pecoTerms = new LinkedHashMap<>();
@@ -86,7 +84,6 @@ public class PombeAllelesConverter extends BioFileConverter
      */
     @Override
     public void process(Reader reader) throws ObjectStoreException, IOException {
-        initialiseMapsForFile();
         setDefaultDataset();
 
         BufferedReader br = new BufferedReader(reader);
@@ -123,15 +120,6 @@ public class PombeAllelesConverter extends BioFileConverter
                         annotationRefId, penetrance, severityTermRefId, conditionsTermRefIds);
             }
         }
-    }
-
-    /**
-     * Reset maps that don't need to retain their contents between files.
-     */
-    private void initialiseMapsForFile() {
-        storedGenesIds = new LinkedHashMap<>();
-        alleles = new LinkedHashMap<>();
-        storedAllelesIds = new LinkedHashMap<>();
     }
 
     private void setDefaultDataset() throws ObjectStoreException {
@@ -180,9 +168,8 @@ public class PombeAllelesConverter extends BioFileConverter
             gene.setAttributeIfNotNull("symbol", symbol);
             gene.setReference("organism", organismRefId);
             gene.addToCollection("dataSets", datasetRefId);
-            Integer id = store(gene);
+            store(gene);
             genes.put(primaryIdentifier, gene.getIdentifier());
-            storedGenesIds.put(gene.getIdentifier(), id);
         }
         return genes.get(primaryIdentifier);
     }
@@ -335,8 +322,6 @@ public class PombeAllelesConverter extends BioFileConverter
             Integer id = store(alleleItem);
             store(gene, id);
             String alleleRefId = alleleItem.getIdentifier();
-            storedAllelesIds.put(alleleRefId, id);
-
             allele.setIdentifier(alleleRefId);
             alleles.put(allele.primaryIdentifier, allele);
 
