@@ -126,11 +126,11 @@ public class PombeOrthologueConverter extends BioFileConverter
     }
 
     private void storeHomologue(String primaryIdentifier, String organismRefId,
-                    String homologuePrimaryIdentifier, String homologueOrganismRefId) {
+                    String homologueIdentifier, String homologueOrganismRefId) {
         Item homologue = createItem("Homologue");
         homologue.setAttribute("type", ORTHOLOGUE_TYPE);
-        homologue.setReference("gene", storeGene(primaryIdentifier, organismRefId));
-        homologue.setReference("homologue", storeGene(homologuePrimaryIdentifier, homologueOrganismRefId));
+        homologue.setReference("gene", storeGene(primaryIdentifier, organismRefId, false));
+        homologue.setReference("homologue", storeGene(homologueIdentifier, homologueOrganismRefId, true));
         homologue.addToCollection("dataSets", datasetRefId);
         try {
             store(homologue);
@@ -139,11 +139,15 @@ public class PombeOrthologueConverter extends BioFileConverter
         }
     }
 
-    private String storeGene(String primaryIdentifier, String organismRefId) {
+    private String storeGene(String primaryIdentifier, String organismRefId, boolean isHomolog) {
         String refId = genes.get(primaryIdentifier);
         if (refId == null) {
             Item gene = createItem("Gene");
-            gene.setAttributeIfNotNull("primaryIdentifier", primaryIdentifier);
+            if (isHomolog) {
+                gene.setAttributeIfNotNull("symbol", primaryIdentifier);
+            } else {
+                gene.setAttributeIfNotNull("primaryIdentifier", primaryIdentifier);
+            }
             gene.setReference("organism", organismRefId);
             gene.addToCollection("dataSets", datasetRefId);
             try {
