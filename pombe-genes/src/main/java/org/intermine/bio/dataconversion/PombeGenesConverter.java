@@ -114,7 +114,7 @@ public class PombeGenesConverter extends BioFileConverter
         Item gene = createItem("Gene");
         gene.setAttributeIfNotNull("primaryIdentifier", geneRoot.path("systematic_id").asText());
         gene.setAttributeIfNotNull("symbol", geneRoot.path("name").asText());
-        gene.setAttributeIfNotNull("name", geneRoot.path("product").asText());
+        gene.setAttributeIfNotNull("description", geneRoot.path("product").asText());
         gene.setAttributeIfNotNull("featureType", geneRoot.path("feature_type").asText());
         gene.addToCollection("dataSets", datasetRefId);
 
