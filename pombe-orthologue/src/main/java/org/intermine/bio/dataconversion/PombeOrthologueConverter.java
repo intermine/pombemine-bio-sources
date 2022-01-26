@@ -129,7 +129,7 @@ public class PombeOrthologueConverter extends BioFileConverter
                     String homologueIdentifier, String homologueOrganismRefId) {
         Item homologue = createItem("Homologue");
         homologue.setAttribute("type", ORTHOLOGUE_TYPE);
-        homologue.setReference("gene", storeGene(primaryIdentifier, organismRefI));
+        homologue.setReference("gene", storeGene(primaryIdentifier, organismRefId));
         homologue.setReference("homologue", storeGene(homologueIdentifier, homologueOrganismRefId));
         homologue.addToCollection("dataSets", datasetRefId);
         try {
