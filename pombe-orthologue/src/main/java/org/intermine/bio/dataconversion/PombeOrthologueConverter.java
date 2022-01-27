@@ -34,6 +34,7 @@ public class PombeOrthologueConverter extends BioFileConverter
     private static final String DATA_SOURCE_NAME = "PomBase";
     private static final String POMBE_TAXON_ID = "4896";
     private static final String ORTHOLOGUE_TYPE = "orthologue";
+    private String homologueTaxonId;
     private String dataset;
     private String datasetRefId;
     private Map<String, String> organismRefIds = new HashMap<>();
@@ -59,7 +60,6 @@ public class PombeOrthologueConverter extends BioFileConverter
             return;
         }
         String fileName = file.getName();
-        String homologueTaxonId;
         if (fileName.contains("cerevisiae")) {
             homologueTaxonId = "4932";
             datasetRefId = setDefaultDataset("cerevisiae-orthologs data set");
@@ -129,8 +129,8 @@ public class PombeOrthologueConverter extends BioFileConverter
                     String homologueIdentifier, String homologueOrganismRefId) {
         Item homologue = createItem("Homologue");
         homologue.setAttribute("type", ORTHOLOGUE_TYPE);
-        homologue.setReference("gene", storeGene(primaryIdentifier, organismRefId));
-        homologue.setReference("homologue", storeGene(homologueIdentifier, homologueOrganismRefId));
+        homologue.setReference("gene", storeGene(primaryIdentifier, organismRefId, false));
+        homologue.setReference("homologue", storeGene(homologueIdentifier, homologueOrganismRefId, true));
         homologue.addToCollection("dataSets", datasetRefId);
         try {
             store(homologue);
@@ -139,11 +139,15 @@ public class PombeOrthologueConverter extends BioFileConverter
         }
     }
 
-    private String storeGene(String primaryIdentifier, String organismRefId) {
+    private String storeGene(String primaryIdentifier, String organismRefId, boolean isHomolog) {
         String refId = genes.get(primaryIdentifier);
         if (refId == null) {
             Item gene = createItem("Gene");
-            gene.setAttributeIfNotNull("primaryIdentifier", primaryIdentifier);
+            if (isHomolog && isHuman()) {
+                gene.setAttributeIfNotNull("symbol", primaryIdentifier);
+            } else {
+                gene.setAttributeIfNotNull("primaryIdentifier", primaryIdentifier);
+            }
             gene.setReference("organism", organismRefId);
             gene.addToCollection("dataSets", datasetRefId);
             try {
@@ -155,5 +159,12 @@ public class PombeOrthologueConverter extends BioFileConverter
             genes.put(primaryIdentifier, refId);
         }
         return refId;
+    }
+
+    private boolean isHuman() {
+        if (homologueTaxonId.equals("9606")) {
+            return true;
+        }
+        return false;
     }
 }
