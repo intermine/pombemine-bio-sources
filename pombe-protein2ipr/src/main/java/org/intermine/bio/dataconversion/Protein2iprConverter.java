@@ -28,7 +28,7 @@ import org.intermine.dataconversion.ItemWriter;
 import org.intermine.metadata.ConstraintOp;
 import org.intermine.metadata.Model;
 import org.intermine.model.bio.Organism;
-import org.intermine.model.bio.Protein;
+import org.intermine.model.bio.UniProtEntry;
 import org.intermine.objectstore.ObjectStore;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.objectstore.ObjectStoreFactory;
@@ -213,7 +213,7 @@ public class Protein2iprConverter extends BioFileConverter
     @SuppressWarnings("unchecked")
     private void getProteinIds() throws Exception {
         Query q = new Query();
-        QueryClass qcProtein = new QueryClass(Protein.class);
+        QueryClass qcProtein = new QueryClass(UniProtEntry.class);
         QueryClass qcOrganism = new QueryClass(Organism.class);
 
         QueryField qfPrimaryAcc = new QueryField(qcProtein, "primaryAccession");
