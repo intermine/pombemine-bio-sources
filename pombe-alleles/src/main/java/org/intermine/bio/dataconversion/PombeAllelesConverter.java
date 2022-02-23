@@ -313,6 +313,7 @@ public class PombeAllelesConverter extends BioFileConverter
             Item alleleItem = createItem("Allele");
             alleleItem.setAttributeIfNotNull("primaryIdentifier", allele.getPrimaryIdentifier());
             alleleItem.setAttributeIfNotNull("symbol", allele.symbol);
+            alleleItem.setAttributeIfNotNull("name", allele.symbol);
             alleleItem.setAttributeIfNotNull("description", allele.description);
             alleleItem.setAttributeIfNotNull("type", allele.type);
             alleleItem.setAttributeIfNotNull("expression", allele.expression);
@@ -352,19 +353,8 @@ public class PombeAllelesConverter extends BioFileConverter
             this.expression = array[4];
             this.symbol = array[9];
             this.type = array[11];
-            primaryIdentifier = createPrimaryIdentifier();
+            this.primaryIdentifier = array[9];
             this.geneRefId = geneRefId;
-        }
-
-        private String createPrimaryIdentifier() {
-            StringBuilder primaryidentifier = new StringBuilder();
-            if (!StringUtils.isEmpty(symbol)) {
-                primaryidentifier.append(symbol);
-            }
-            if (!StringUtils.isEmpty(description)) {
-                primaryidentifier.append("(").append(description).append(")");
-            }
-            return primaryidentifier.toString();
         }
 
         public String getPrimaryIdentifier() {
