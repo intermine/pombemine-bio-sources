@@ -496,35 +496,7 @@ public class PombeUniprotConverter extends BioDirectoryConverter
             } else if (StringUtils.isNotEmpty(attName) && "ecNumber".equals(attName)) {
                 entry.addECNumber(attValue.toString());
             } else if ("text".equals(qName) && "comment".equals(previousQName)) {
-                StringBuilder commentText = new StringBuilder();
-                commentText.append(attValue.toString());
-                if (commentText.length() > 0) {
-                    Item item = createItem("Comment");
-                    String commentType = entry.getCommentType();
-                    item.setAttribute("type", commentType);
-                    if (commentText.length() > POSTGRES_INDEX_SIZE) {
-                        // comment text is a string
-                        String ellipses = "...";
-                        String choppedComment = commentText.substring(
-                                0, POSTGRES_INDEX_SIZE - ellipses.length());
-                        item.setAttribute("description", choppedComment + ellipses);
-                    } else {
-                        if ("disease".equals(commentType) && disease != null) {
-                            item.setAttribute("description", disease.toString()
-                                    + commentText.toString());
-                        } else {
-                            item.setAttribute("description", commentText.toString());
-                        }
-                    }
-
-                    String refId = item.getIdentifier();
-                    try {
-                        Integer objectId = store(item);
-                        entry.addCommentRefId(refId, objectId);
-                    } catch (ObjectStoreException e) {
-                        throw new SAXException(e);
-                    }
-                }
+                //no comment in pombemine
             } else if ("name".equals(qName) && "gene".equals(previousQName)) {
                 entry.addGeneName(attName, attValue.toString());
             } else if ("keyword".equals(qName)) {
