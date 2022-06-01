@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.*;
 
-import jdk.internal.joptsimple.internal.Strings;
 import org.intermine.xml.full.Reference;
 import org.apache.commons.lang.StringUtils;
 import org.intermine.dataconversion.ItemWriter;
@@ -335,9 +334,9 @@ public class PombeAllelesConverter extends BioFileConverter
     }
 
     private void storeSynonyms(String synonymsAsString, Item allele) {
-        if (!Strings.isNullOrEmpty(synonymsAsString)) {
+        if (StringUtils.isNotEmpty(synonymsAsString)) {
             List<String> synonymIds = new ArrayList<>();
-            String[] synonyms = synonymsAsString.split("|");
+            String[] synonyms = synonymsAsString.split("\\|");
             for (int index = 0; index < synonyms.length; index++) {
                 Item synonym = createItem("Synonym");
                 synonym.setAttributeIfNotNull("value", synonyms[index]);
