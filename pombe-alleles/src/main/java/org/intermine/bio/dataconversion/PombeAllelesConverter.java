@@ -14,6 +14,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.*;
+
+import jdk.internal.joptsimple.internal.Strings;
 import org.intermine.xml.full.Reference;
 import org.apache.commons.lang.StringUtils;
 import org.intermine.dataconversion.ItemWriter;
@@ -319,6 +321,7 @@ public class PombeAllelesConverter extends BioFileConverter
             alleleItem.setAttributeIfNotNull("expression", allele.expression);
             alleleItem.setReference("organism", organismRefId);
             alleleItem.addToCollection("dataSets", datasetRefId);
+            storeSynonyms(allele.synonyms, alleleItem);
             Reference gene = new Reference("gene", allele.geneRefId);
             Integer id = store(alleleItem);
             store(gene, id);
@@ -331,11 +334,32 @@ public class PombeAllelesConverter extends BioFileConverter
         return alleleStored.getIdentifier();
     }
 
+    private void storeSynonyms(String synonymsAsString, Item allele) {
+        if (!Strings.isNullOrEmpty(synonymsAsString)) {
+            List<String> synonymIds = new ArrayList<>();
+            String[] synonyms = synonymsAsString.split("|");
+            for (int index = 0; index < synonyms.length; index++) {
+                Item synonym = createItem("Synonym");
+                synonym.setAttributeIfNotNull("value", synonyms[index]);
+                synonym.setReference("subject", allele);
+                synonym.addToCollection("dataSets", datasetRefId);
+                try {
+                    store(synonym);
+                    synonymIds.add(synonym.getIdentifier());
+                } catch (ObjectStoreException ex) {
+                    throw new RuntimeException("Error storing synonym ", ex);
+                }
+            }
+            allele.setCollection("synonyms", synonymIds);
+        }
+    }
+
     private class Allele
     {
         String symbol;
         String description;
         String type;
+        String synonyms;
         String expression;
         String primaryIdentifier;
         String geneRefId;
@@ -352,6 +376,7 @@ public class PombeAllelesConverter extends BioFileConverter
             this.description = array[3];
             this.expression = array[4];
             this.symbol = array[9];
+            this.synonyms = array[10];
             this.type = array[11];
             this.primaryIdentifier = array[9];
             this.geneRefId = geneRefId;
