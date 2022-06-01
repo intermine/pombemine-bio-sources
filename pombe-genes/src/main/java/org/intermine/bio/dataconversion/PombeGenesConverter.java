@@ -113,7 +113,9 @@ public class PombeGenesConverter extends BioFileConverter
     private void storeGene(JsonNode geneRoot) {
         Item gene = createItem("Gene");
         gene.setAttributeIfNotNull("primaryIdentifier", geneRoot.path("systematic_id").asText());
-        gene.setAttributeIfNotNull("symbol", geneRoot.path("name").asText());
+        String name = geneRoot.path("name").asText();
+        gene.setAttributeIfNotNull("symbol", name);
+        gene.setAttributeIfNotNull("name", name);
         gene.setAttributeIfNotNull("description", geneRoot.path("product").asText());
         gene.setAttributeIfNotNull("featureType", geneRoot.path("feature_type").asText());
         gene.addToCollection("dataSets", datasetRefId);
