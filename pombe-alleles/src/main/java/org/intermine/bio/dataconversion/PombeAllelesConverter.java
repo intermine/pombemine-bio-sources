@@ -113,12 +113,11 @@ public class PombeAllelesConverter extends BioFileConverter
                 String alleleRefId = storeAllele(allele, organismRefId);
                 String pubMedRefId = storePublication(pubMedId);
                 String phenotypeTermRefId = storePhenotypeTerm(phenotypeTermId);
-                String severityTermRefId = storePhenotypeTerm(severity);
                 List<String> conditionsTermRefIds = storePECOTerms(condition);
                 String evidenceRefId = storeEvidence(pubMedRefId, evidence);
                 String annotationRefId = storeAnnotationExtension(extension);
                 storePhenotypeAnnotation(alleleRefId, phenotypeTermRefId, evidenceRefId,
-                        annotationRefId, penetrance, severityTermRefId, conditionsTermRefIds);
+                        annotationRefId, penetrance, severity, conditionsTermRefIds);
             }
         }
     }
@@ -239,7 +238,7 @@ public class PombeAllelesConverter extends BioFileConverter
 
     private void storePhenotypeAnnotation(String alleleRefId,
             String phenotypeTermRefId, String evidenceRefId, String annotationRefId,
-            String penetrance, String severityTermRefId, List<String> conditionsTermRefIds)
+            String penetrance, String severity, List<String> conditionsTermRefIds)
             throws ObjectStoreException {
         Item phenotypeAnnotation = createItem("PhenotypeAnnotation");
         if (alleleRefId != null) {
@@ -251,9 +250,7 @@ public class PombeAllelesConverter extends BioFileConverter
             phenotypeAnnotation.setReference("ontologyTerm", phenotypeTermRefId);
         }
         phenotypeAnnotation.setAttributeIfNotNull("penetrance", penetrance);
-        if(!StringUtils.isEmpty(severityTermRefId)) {
-            phenotypeAnnotation.setReference("severity", severityTermRefId);
-        }
+        phenotypeAnnotation.setAttributeIfNotNull("severity", severity);
         if(!StringUtils.isEmpty(annotationRefId)) {
             phenotypeAnnotation.setReference("annotationExtension", annotationRefId);
         }

@@ -15,7 +15,7 @@
     <reference name="annotationExtension" referenced-type="AnnotationExtension"/>
     <reference name="allele" referenced-type="Allele" reverse-reference="phenotypeAnnotations"/>
     <attribute name="penetrance" type="java.lang.String"/>
-    <reference name="severity" referenced-type="PhenotypeTerm"/>
+    <attribute name="severity" type="java.lang.String"/>
     <collection name="conditions" referenced-type="Condition"/>
   </class>
 
