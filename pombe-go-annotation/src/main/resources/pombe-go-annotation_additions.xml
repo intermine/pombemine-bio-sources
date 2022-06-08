@@ -1,10 +1,12 @@
 <?xml version="1.0"?>
 <classes>
 <class name="GOAnnotation" extends="OntologyAnnotation" is-interface="true">
-  <reference name="annotationExtension" referenced-type="AnnotationExtension"/>
+  <collection name="annotationExtensions" referenced-type="AnnotationExtensionPart"/>
 </class>
-<class name="AnnotationExtension" is-interface="true">
-  <attribute name="description" type="java.lang.String"/>
+<class name="AnnotationExtensionPart" is-interface="true">
+  <reference name="relation" referenced-type="OntologyTerm"/>
+  <reference name="geneRange" referenced-type="Gene"/>
+  <reference name="termRange" referenced-type="OntologyTerm"/>
 </class>
 <class name="Gene" is-interface="true">
   <collection name="goAnnotation" referenced-type="GOAnnotation"/>

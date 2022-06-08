@@ -245,7 +245,6 @@ public class PombeGoConverter extends BioFileConverter
 
         BufferedReader br = new BufferedReader(reader);
         String line = null;
-
         // loop through entire file
         while ((line = br.readLine()) != null) {
             if (line.startsWith("!")) {
@@ -298,12 +297,12 @@ public class PombeGoConverter extends BioFileConverter
             if (productIdentifier != null) {
                 // null if no pub found
                 String pubRefId = newPublication(array[5]);
-                String annotationExtRefId = createAnnotationExtension(annotationExtension);
+                List<String> annotationExtRefIds = createAnnotationExtensions(annotationExtension);
 
                 String goTermIdentifier = newGoTerm(goId);
                 Evidence evidence = new Evidence(strEvidence, pubRefId, withText, organism);
                 Integer storedAnnotationId = createGoAnnotation(productIdentifier, type,
-                        goTermIdentifier, qualifier, annotationExtRefId);
+                        goTermIdentifier, qualifier, annotationExtRefIds);
                 evidence.setStoredAnnotationId(storedAnnotationId);
                 storeEvidence(evidence);
             }
@@ -361,7 +360,7 @@ public class PombeGoConverter extends BioFileConverter
     }
 
     private Integer createGoAnnotation(String productIdentifier, String productType,
-            String termIdentifier, String qualifier, String annotationExtRefId)
+            String termIdentifier, String qualifier, List annotationExtRefIds)
             throws ObjectStoreException {
 
         Item goAnnotation = createItem(annotationClassName);
@@ -376,10 +375,10 @@ public class PombeGoConverter extends BioFileConverter
         if ("gene".equals(productType)) {
             addProductCollection(productIdentifier, goAnnotation.getIdentifier());
         }
-        if (annotationExtRefId != null) {
-            goAnnotation.setReference("annotationExtension", annotationExtRefId);
+        if (!annotationExtRefIds.isEmpty()) {
+            ReferenceList refIds = new ReferenceList("annotationExtensions", annotationExtRefIds);
+            goAnnotation.addCollection(refIds);
         }
-
         Integer storedAnnotationId = store(goAnnotation);
         return storedAnnotationId;
     }
@@ -667,18 +666,84 @@ public class PombeGoConverter extends BioFileConverter
         return item;
     }
 
-    private String createAnnotationExtension(String annotationExtensionDesc) throws ObjectStoreException {
-        String annotationExtensionRefId = annotationExtensions.get(annotationExtensionDesc);
-        if (annotationExtensionRefId == null) {
-            if (StringUtils.isNotEmpty(annotationExtensionDesc)) {
-                Item annotationExtension = createItem("AnnotationExtension");
-                annotationExtension.setAttribute("description", annotationExtensionDesc);
-                store(annotationExtension);
-                annotationExtensionRefId = annotationExtension.getIdentifier();
-                annotationExtensions.put(annotationExtensionDesc, annotationExtensionRefId);
+    private List createAnnotationExtensions(String annotationExtensionConcat)
+            throws ObjectStoreException {
+        List<String> annotationExtensionRefIds = new ArrayList<>();
+        if (annotationExtensionConcat.isEmpty()) {
+            return annotationExtensionRefIds;
+        }
+        String[] annotationExtensionsDesc = annotationExtensionConcat.split(",");
+        for (int index = 0; index < annotationExtensionsDesc.length; index++) {
+            String annotationExtensionDesc = annotationExtensionsDesc[index];
+
+            String annotationExtensionRefId = annotationExtensions.get(annotationExtensionDesc);
+            if (annotationExtensionRefId == null) {
+                Item annotationExtension = createItem("AnnotationExtensionPart");
+                String relationTermId = parseAnnotationExtensionRelation(annotationExtensionDesc);
+                if (relationTermId != null) {
+                    annotationExtension.setReference("relation", relationTermId);
+                    String genePrimaryIdentifier =
+                            parseAnnotationExtensionGene(annotationExtensionDesc);
+                    if (genePrimaryIdentifier != null) {
+                        annotationExtension.setReference("geneRange", newGeneRange(genePrimaryIdentifier));
+                    } else {
+                        annotationExtension.setReference("termRange",
+                            parseAnnotationExtensionTerm(annotationExtensionDesc));
+                    }
+                    store(annotationExtension);
+                    annotationExtensionRefId = annotationExtension.getIdentifier();
+                    annotationExtensions.put(annotationExtensionDesc, annotationExtensionRefId);
+                }
+            }
+            if (annotationExtensionRefId != null) {
+                annotationExtensionRefIds.add(annotationExtensionRefId);
             }
         }
-        return annotationExtensionRefId;
+        return annotationExtensionRefIds;
+    }
+
+    private String parseAnnotationExtensionRelation(String annotation)
+            throws ObjectStoreException {
+        if (annotation.contains("has_input"))
+            return newTerm("RO:0002233");
+        if (annotation.contains("happens_during"))
+            return newTerm("RO:0002092");
+        if (annotation.contains("part_of"))
+            return newTerm("BFO:0000050");
+        return null;
+    }
+
+    private String newTerm(String termId) throws ObjectStoreException {
+        String termIdentifier = goTerms.get(termId);
+        if (termIdentifier == null) {
+            Item item = createItem("OntologyTerm");
+            item.setAttribute("identifier", termId);
+            store(item);
+            termIdentifier = item.getIdentifier();
+            goTerms.put(termId, termIdentifier);
+        }
+        return termIdentifier;
+    }
+
+    private String parseAnnotationExtensionGene(String annotation) {
+        String prefix = "PomBase:";
+        if (annotation.contains(prefix)) {
+            int index = annotation.indexOf(prefix) + 8;
+            return annotation.substring(index, annotation.length() - 1);
+        }
+        return null;
+    }
+
+    private String newGeneRange(String primaryIdentifier) throws ObjectStoreException {
+
+        Item organism = newOrganism("4896");
+        String productIdentifier = newProduct(primaryIdentifier, "Gene", organism, true, null);
+        return productIdentifier;
+    }
+
+    private String parseAnnotationExtensionTerm(String annotation) throws ObjectStoreException {
+        String termRange = annotation.substring(annotation.indexOf("(") + 1, annotation.indexOf(")"));
+        return newTerm(termRange);
     }
 
     private String parseTaxonId(String input) {
