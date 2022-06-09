@@ -495,8 +495,6 @@ public class PombeUniprotConverter extends BioDirectoryConverter
                 entry.addProteinName(attValue.toString());
             } else if (StringUtils.isNotEmpty(attName) && "ecNumber".equals(attName)) {
                 entry.addECNumber(attValue.toString());
-            } else if ("text".equals(qName) && "comment".equals(previousQName)) {
-                //no comment in pombemine
             } else if ("name".equals(qName) && "gene".equals(previousQName)) {
                 entry.addGeneName(attName, attValue.toString());
             } else if ("keyword".equals(qName)) {
@@ -510,11 +508,6 @@ public class PombeUniprotConverter extends BioDirectoryConverter
                 if (accession.equals(entry.getPrimaryAccession())) {
                     checkUniqueIdentifier(entry, accession);
                 }
-            } else if (StringUtils.isNotEmpty(attName) && "component".equals(attName)
-                    && "fullName".equals(qName)
-                    && "recommendedName".equals(previousQName)
-                    && stack.search("component") == 2) {
-                entry.addComponent(attValue.toString());
             } else if (StringUtils.isNotEmpty(attName) && "disease".equals(attName)
                     && ("name".equals(qName) || "acronym".equals(qName)
                             || "description".equals(qName))
